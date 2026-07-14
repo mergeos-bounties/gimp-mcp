@@ -4,7 +4,7 @@
       "command": "gimp-mcp",
       "args": ["serve"],
       "env": {
-        "GIMP_MCP_MODE": "mock"
+        "GIMP_MCP_MODE": "live"
       }
     }
   }

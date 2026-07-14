@@ -10,7 +10,7 @@ from rich.table import Table
 
 from gimp_mcp import __version__
 from gimp_mcp.backend import get_backend, switch_mode
-from gimp_mcp.backend.live import discover_gimp_console
+from gimp_mcp.backend.live import discover_gimp_console, probe_gimp_version
 from gimp_mcp.config import get_mode, set_mode
 
 app = typer.Typer(help="gimp-mcp — MCP server for GIMP image ops", no_args_is_help=True)
@@ -41,11 +41,14 @@ TOOL_NAMES = [
 
 @app.command("version")
 def version_cmd() -> None:
+    ver = probe_gimp_version()
     rprint(
         {
             "version": __version__,
             "mode": get_mode(),
             "gimp_console": discover_gimp_console(),
+            "gimp_major": ver.get("major"),
+            "gimp_version_lines": ver.get("lines"),
         }
     )
 
@@ -98,8 +101,13 @@ def live_smoke_cmd(
     if not opened.get("ok"):
         raise typer.Exit(1)
     iid = opened["image"]["id"]
-    rprint(b.resize(iid, 200, 150))
+    resized = b.resize(iid, 200, 150)
+    rprint(resized)
     rprint(b.export(iid, str(b._ws / "live_smoke.png")))  # noqa: SLF001
+    engine = (resized.get("gimp") or {}).get("engine") or (resized.get("gimp") or {}).get(
+        "fallback"
+    )
+    rprint({"live_smoke": "complete", "resize_engine": engine})
     rprint("gimp-mcp live-smoke complete.")
 
 
@@ -112,6 +120,19 @@ def tools_list() -> None:
     console.print(table)
 
 
+def _parse_kv(arg: Optional[list[str]]) -> dict[str, Any]:
+    kv: dict[str, Any] = {}
+    for a in arg or []:
+        if "=" not in a:
+            continue
+        k, v = a.split("=", 1)
+        try:
+            kv[k] = json.loads(v)
+        except json.JSONDecodeError:
+            kv[k] = v
+    return kv
+
+
 @app.command("call")
 def call_cmd(
     tool: str = typer.Argument(..., help="e.g. doctor or gimp_doctor"),
@@ -119,14 +140,12 @@ def call_cmd(
 ) -> None:
     b = get_backend()
     name = tool if tool.startswith("gimp_") else f"gimp_{tool}"
-    kv: dict[str, Any] = {}
-    for a in arg or []:
-        if "=" in a:
-            k, v = a.split("=", 1)
-            try:
-                kv[k] = json.loads(v)
-            except json.JSONDecodeError:
-                kv[k] = v
+    kv = _parse_kv(arg)
+
+    def _need(*keys: str) -> None:
+        missing = [k for k in keys if k not in kv or kv[k] in ("", None)]
+        if missing:
+            raise typer.Exit(f"missing args: {', '.join(k + '=...' for k in missing)}")
 
     dispatch = {
         "gimp_mode": lambda: switch_mode(str(kv.get("mode", get_mode()))),
@@ -141,7 +160,42 @@ def call_cmd(
         "gimp_resize": lambda: b.resize(
             str(kv.get("image_id", "")), int(kv.get("width", 256)), int(kv.get("height", 256))
         ),
-        "gimp_export": lambda: b.export(str(kv.get("image_id", "")), str(kv.get("path", "out.png"))),
+        "gimp_crop": lambda: (
+            _need("image_id", "x", "y", "width", "height")
+            or b.crop(
+                str(kv["image_id"]),
+                int(kv["x"]),
+                int(kv["y"]),
+                int(kv["width"]),
+                int(kv["height"]),
+            )
+        ),
+        "gimp_flip": lambda: b.flip(
+            str(kv.get("image_id", "")), str(kv.get("direction", "horizontal"))
+        ),
+        "gimp_rotate": lambda: b.rotate(
+            str(kv.get("image_id", "")), float(kv.get("degrees", 90))
+        ),
+        "gimp_blur": lambda: b.blur(str(kv.get("image_id", "")), float(kv.get("radius", 2.0))),
+        "gimp_desaturate": lambda: b.desaturate(str(kv.get("image_id", ""))),
+        "gimp_invert": lambda: b.invert(str(kv.get("image_id", ""))),
+        "gimp_text_overlay": lambda: b.text_overlay(
+            str(kv.get("image_id", "")),
+            str(kv.get("text", "")),
+            int(kv.get("x", 10)),
+            int(kv.get("y", 10)),
+            int(kv.get("size", 32)),
+            str(kv.get("color", "#000000")),
+        ),
+        "gimp_export": lambda: b.export(
+            str(kv.get("image_id", "")), str(kv.get("path", "out.png")), kv.get("format")
+        ),
+        "gimp_batch_resize": lambda: b.batch_resize(
+            str(kv.get("input_dir", "")),
+            str(kv.get("output_dir", "")),
+            int(kv.get("width", 256)),
+            int(kv.get("height", 256)),
+        ),
     }
     if name not in dispatch:
         raise typer.Exit(f"unknown tool {name}; try: gimp-mcp tools list")
@@ -154,7 +208,3 @@ def serve_cmd() -> None:
     from gimp_mcp.server import run_stdio
 
     run_stdio()
-
-
-if __name__ == "__main__":
-    app()

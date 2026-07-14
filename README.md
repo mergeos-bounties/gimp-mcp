@@ -1,7 +1,7 @@
 # gimp-mcp
 
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/downloads/)
-[![Version](https://img.shields.io/badge/version-0.1.0-0E8A16.svg)](pyproject.toml)
+[![Version](https://img.shields.io/badge/version-0.1.1-0E8A16.svg)](pyproject.toml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![MergeOS](https://img.shields.io/badge/MergeOS-bounties-5319E7.svg)](https://github.com/mergeos-bounties)
 
@@ -16,18 +16,51 @@
 
 ---
 
+## Install for Grok (one command)
+
+```bash
+grok plugin install mergeos-bounties/gimp-mcp --trust
+```
+
+That installs the **skill** + **MCP server config** from this repo. Then install the Python package so `gimp-mcp serve` is on PATH:
+
+```bash
+pip install "git+https://github.com/mergeos-bounties/gimp-mcp.git"
+```
+
+Check:
+
+```bash
+gimp-mcp version
+gimp-mcp doctor
+gimp-mcp demo
+# with GIMP 3.x installed:
+gimp-mcp live-smoke
+```
+
+Local plugin validate (from a clone):
+
+```bash
+grok plugin validate .
+grok plugin install . --trust
+```
+
+---
+
 ## Highlights
 
 | Capability | Description |
 | --- | --- |
 | **MCP tools** | `gimp_doctor`, `gimp_open`, `gimp_resize`, `gimp_export`, … |
-| **CLI** | `gimp-mcp demo`, `doctor`, `live-smoke`, `serve` |
+| **CLI** | `gimp-mcp demo`, `doctor`, `live-smoke`, `serve`, `call` |
 | **Offline demo** | Always works with Pillow mock |
-| **Live batch** | Detects `gimp-console` for scale/batch via Script-Fu |
+| **Live GIMP 3** | `python-fu-eval` + `--quit` (~2s scale on Windows) |
+| **Live GIMP 2** | Script-Fu batch |
+| **Grok plugin** | `skills/gimp-mcp` + `.mcp.json` + `.grok-plugin/plugin.json` |
 
 ---
 
-## Quick start
+## Quick start (developers)
 
 ```powershell
 cd mcp\GIMP-mcp
@@ -44,14 +77,14 @@ pytest -q
 # Install GIMP 3.x, then:
 $env:GIMP_MCP_MODE = "live"
 # optional override:
-# $env:GIMP_MCP_BIN = "C:\Program Files\GIMP 3\bin\gimp-console-3.0.exe"
+# $env:GIMP_MCP_BIN = "$env:LOCALAPPDATA\Programs\GIMP 3\bin\gimp-console.exe"
 gimp-mcp doctor
 gimp-mcp live-smoke
 ```
 
 ### MCP host config
 
-See [examples/claude_desktop_config.json](examples/claude_desktop_config.json) and [examples/cursor_mcp.json](examples/cursor_mcp.json).
+Plugin ships [`.mcp.json`](.mcp.json). Manual examples: [examples/claude_desktop_config.json](examples/claude_desktop_config.json), [examples/cursor_mcp.json](examples/cursor_mcp.json).
 
 ```json
 {
@@ -59,7 +92,7 @@ See [examples/claude_desktop_config.json](examples/claude_desktop_config.json) a
     "gimp-mcp": {
       "command": "gimp-mcp",
       "args": ["serve"],
-      "env": { "GIMP_MCP_MODE": "mock" }
+      "env": { "GIMP_MCP_MODE": "live" }
     }
   }
 }
@@ -76,6 +109,7 @@ See [examples/claude_desktop_config.json](examples/claude_desktop_config.json) a
 | `gimp-mcp demo` | Mock end-to-end smoke |
 | `gimp-mcp live-smoke` | Live console smoke (skips if missing) |
 | `gimp-mcp tools list` | MCP tool names |
+| `gimp-mcp call …` | One-shot tool (`key=value`) |
 | `gimp-mcp serve` | Stdio MCP server |
 
 MCP tools: `gimp_mode`, `gimp_doctor`, `gimp_seed_demo`, `gimp_list_images`, `gimp_new_image`, `gimp_open`, `gimp_info`, `gimp_resize`, `gimp_crop`, `gimp_flip`, `gimp_rotate`, `gimp_blur`, `gimp_desaturate`, `gimp_invert`, `gimp_text_overlay`, `gimp_export`, `gimp_batch_resize`.
@@ -99,6 +133,15 @@ ruff check src tests
 pytest -q
 ```
 
+Plugin layout:
+
+```
+.grok-plugin/plugin.json   # Grok plugin manifest
+.mcp.json                  # MCP stdio server for Grok
+skills/gimp-mcp/           # Skill (auto-loaded after plugin install)
+.grok/skills/gimp-mcp/     # Same skill for in-repo discovery
+```
+
 ---
 
 ## MergeOS bounties
@@ -115,8 +158,9 @@ MIT — see [LICENSE](LICENSE).
 
 ## Live test note (maintainer)
 
-Verified on Windows with GIMP **3.2.4** at:
+Verified on Windows with GIMP **3.2.4** at  
 `%LOCALAPPDATA%\Programs\GIMP 3\bin\gimp-console.exe`
 
-- `gimp-mcp doctor` (live) detects console and version
-- `gimp-mcp live-smoke` completes (resize may use Pillow assist if Script-Fu batch times out on GIMP 3)
+- Live resize uses **python-fu-eval** + `--quit` (not Script-Fu hang)
+- `gimp-mcp live-smoke` completes in a few seconds
+- Filters may still use Pillow assist by design

@@ -1,8 +1,9 @@
-"""Live GIMP via gimp-console batch (Script-Fu / file batch)."""
+"""Live GIMP via gimp-console batch (GIMP 3 python-fu + GIMP 2 Script-Fu)."""
 
 from __future__ import annotations
 
 import os
+import re
 import shutil
 import subprocess
 import tempfile
@@ -12,14 +13,19 @@ from typing import Any
 
 from gimp_mcp.config import batch_timeout_sec, gimp_bin, workspace_dir
 
+_version_cache: dict[str, Any] = {"exe": None, "major": None, "lines": None}
+
 
 def discover_gimp_console() -> str | None:
     override = gimp_bin()
     if override and Path(override).is_file():
         return override
     candidates: list[str] = []
-    which = shutil.which("gimp-console") or shutil.which("gimp-console-3.0") or shutil.which(
-        "gimp-console-2.10"
+    which = (
+        shutil.which("gimp-console")
+        or shutil.which("gimp-console-3.0")
+        or shutil.which("gimp-console-3")
+        or shutil.which("gimp-console-2.10")
     )
     if which:
         candidates.append(which)
@@ -39,9 +45,55 @@ def discover_gimp_console() -> str | None:
                 continue
             for pat in ("gimp-console-*.exe", "gimp-console.exe"):
                 candidates.extend(str(p) for p in bin_dir.glob(pat))
-    # prefer higher version strings last sorted reverse
-    uniq = sorted({c for c in candidates if Path(c).is_file()}, reverse=True)
-    return uniq[0] if uniq else None
+    # Prefer higher version numbers in filename (3.2 > 3.0 > plain)
+    def _rank(path: str) -> tuple[int, int, str]:
+        name = Path(path).name.lower()
+        m = re.search(r"(\d+)\.(\d+)", name)
+        if m:
+            return (int(m.group(1)), int(m.group(2)), path)
+        if "gimp-console-3" in name:
+            return (3, 0, path)
+        if "gimp-console-2" in name:
+            return (2, 10, path)
+        return (0, 0, path)
+
+    uniq = [c for c in candidates if Path(c).is_file()]
+    if not uniq:
+        return None
+    uniq.sort(key=_rank, reverse=True)
+    return uniq[0]
+
+
+def probe_gimp_version(exe: str | None = None) -> dict[str, Any]:
+    """Return major version and raw version lines for a console binary."""
+    exe = exe or discover_gimp_console()
+    if not exe:
+        return {"exe": None, "major": None, "lines": None}
+    if _version_cache.get("exe") == exe and _version_cache.get("major") is not None:
+        return dict(_version_cache)
+    lines: list[str] | None = None
+    major: int | None = None
+    try:
+        proc = subprocess.run(
+            [exe, "--version"],
+            capture_output=True,
+            text=True,
+            timeout=15,
+            check=False,
+        )
+        text = (proc.stdout or proc.stderr or "").strip()
+        lines = text.splitlines()[:3] if text else []
+        m = re.search(r"version\s+(\d+)\.", text, re.I)
+        if m:
+            major = int(m.group(1))
+        elif "GIMP 3" in exe or "gimp-console-3" in exe.lower():
+            major = 3
+        elif "GIMP 2" in exe or "gimp-console-2" in exe.lower():
+            major = 2
+    except (OSError, subprocess.TimeoutExpired):
+        pass
+    _version_cache.update({"exe": exe, "major": major, "lines": lines})
+    return dict(_version_cache)
 
 
 class LiveBackend:
@@ -70,34 +122,40 @@ class LiveBackend:
                     "to gimp-console executable. Mock mode works offline."
                 ),
             }
-        # quick --help / -v probe (non-fatal)
-        version = None
-        try:
-            proc = subprocess.run(
-                [exe, "--version"],
-                capture_output=True,
-                text=True,
-                timeout=15,
-                check=False,
-            )
-            version = (proc.stdout or proc.stderr or "").strip().splitlines()[:2]
-        except (OSError, subprocess.TimeoutExpired) as e:
-            return {
-                "ok": False,
-                "mode": "live",
-                "connected": False,
-                "gimp_console": exe,
-                "error": str(e),
-            }
+        ver = probe_gimp_version(exe)
+        if ver.get("lines") is None and ver.get("major") is None:
+            try:
+                subprocess.run(
+                    [exe, "--version"],
+                    capture_output=True,
+                    text=True,
+                    timeout=15,
+                    check=False,
+                )
+            except (OSError, subprocess.TimeoutExpired) as e:
+                return {
+                    "ok": False,
+                    "mode": "live",
+                    "connected": False,
+                    "gimp_console": exe,
+                    "error": str(e),
+                }
+        major = ver.get("major")
+        batch = (
+            "python-fu-eval + --quit (GIMP 3)"
+            if major and major >= 3
+            else "script-fu file-load/scale/export (GIMP 2)"
+        )
         return {
             "ok": True,
             "mode": "live",
             "connected": True,
             "gimp_console": exe,
-            "version_lines": version,
+            "version_lines": ver.get("lines"),
+            "gimp_major": major,
             "images_open": len(self._images),
             "workspace": str(self._ws),
-            "batch": "script-fu file-load/scale/export",
+            "batch": batch,
         }
 
     def seed_demo(self) -> dict[str, Any]:
@@ -106,25 +164,80 @@ class LiveBackend:
             "error": "seed_demo is mock-only; use gimp_new_image or gimp_open in live",
         }
 
-    def _run_script_fu(self, script: str) -> dict[str, Any]:
+    def _run_python_fu(self, code: str) -> dict[str, Any]:
+        """GIMP 3.x: python-fu-eval + --quit (exits cleanly in ~2s on Windows)."""
         exe = discover_gimp_console()
         if not exe:
             return {"ok": False, "error": "gimp-console not found", "doctor": self.doctor()}
-        # Write script to temp file for readability / debugging
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".py", delete=False, encoding="utf-8", newline="\n"
+        ) as f:
+            f.write(code)
+            py_path = f.name
+        try:
+            load = f"exec(open(r'{Path(py_path).as_posix()}').read())"
+            cmd = [
+                exe,
+                "-i",
+                "-d",
+                "-f",
+                "-c",
+                "--batch-interpreter",
+                "python-fu-eval",
+                "-b",
+                load,
+                "--quit",
+            ]
+            proc = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                timeout=batch_timeout_sec(),
+                check=False,
+            )
+            out = (proc.stdout or "") + "\n" + (proc.stderr or "")
+            ok = proc.returncode == 0 and "batch command executed successfully" in out
+            # success if process exited cleanly or marker printed
+            if "OK_" in (proc.stdout or ""):
+                ok = True
+            return {
+                "ok": ok,
+                "engine": "python-fu-eval",
+                "returncode": proc.returncode,
+                "log_tail": out[-2000:],
+            }
+        except subprocess.TimeoutExpired:
+            return {"ok": False, "error": "gimp batch timed out", "engine": "python-fu-eval"}
+        except OSError as e:
+            return {"ok": False, "error": str(e), "engine": "python-fu-eval"}
+        finally:
+            try:
+                Path(py_path).unlink(missing_ok=True)
+            except OSError:
+                pass
+
+    def _run_script_fu(self, script: str) -> dict[str, Any]:
+        """GIMP 2.x classic Script-Fu batch."""
+        exe = discover_gimp_console()
+        if not exe:
+            return {"ok": False, "error": "gimp-console not found", "doctor": self.doctor()}
         with tempfile.NamedTemporaryFile(
             mode="w", suffix=".scm", delete=False, encoding="utf-8"
         ) as f:
             f.write(script)
             scm = f.name
         try:
-            # GIMP 2/3 console batch
             cmd = [
                 exe,
                 "-i",
+                "-d",
+                "-f",
+                "-c",
                 "-b",
                 f'(load "{Path(scm).as_posix()}")',
                 "-b",
                 "(gimp-quit 0)",
+                "--quit",
             ]
             proc = subprocess.run(
                 cmd,
@@ -137,25 +250,61 @@ class LiveBackend:
             ok = proc.returncode == 0
             return {
                 "ok": ok,
+                "engine": "script-fu",
                 "returncode": proc.returncode,
                 "log_tail": out[-2000:],
                 "script": scm if not ok else None,
             }
         except subprocess.TimeoutExpired:
-            return {"ok": False, "error": "gimp batch timed out"}
+            return {"ok": False, "error": "gimp batch timed out", "engine": "script-fu"}
         except OSError as e:
-            return {"ok": False, "error": str(e)}
+            return {"ok": False, "error": str(e), "engine": "script-fu"}
         finally:
             try:
                 Path(scm).unlink(missing_ok=True)
             except OSError:
                 pass
 
+    def _scale_with_gimp(self, src: Path, out: Path, width: int, height: int) -> dict[str, Any]:
+        """Scale src → out using GIMP 3 python-fu or GIMP 2 Script-Fu."""
+        w, h = max(1, int(width)), max(1, int(height))
+        src_s, out_s = src.as_posix(), out.as_posix()
+        ver = probe_gimp_version()
+        major = ver.get("major") or 0
+
+        if major >= 3:
+            code = (
+                "from gi.repository import Gimp, Gio\n"
+                f"src = r'{src_s}'\n"
+                f"dst = r'{out_s}'\n"
+                "image = Gimp.file_load(Gimp.RunMode.NONINTERACTIVE, Gio.File.new_for_path(src))\n"
+                f"image.scale({w}, {h})\n"
+                "Gimp.file_save(Gimp.RunMode.NONINTERACTIVE, image, Gio.File.new_for_path(dst), None)\n"
+                "image.delete()\n"
+                "print('OK_SCALE')\n"
+            )
+            result = self._run_python_fu(code)
+        else:
+            script = f"""
+(let* (
+  (image (car (gimp-file-load RUN-NONINTERACTIVE "{src_s}" "{src_s}")))
+  (drawable (car (gimp-image-get-active-layer image)))
+)
+  (gimp-image-scale image {w} {h})
+  (file-png-save RUN-NONINTERACTIVE image drawable "{out_s}" "{out_s}" 0 9 0 0 0 0 0)
+  (gimp-image-delete image)
+)
+"""
+            result = self._run_script_fu(script)
+
+        if out.is_file():
+            result["ok"] = True
+        return result
+
     def list_images(self) -> list[dict[str, Any]]:
         return [dict(v) for v in self._images.values()]
 
     def new_image(self, width: int, height: int, color: str = "#ffffff") -> dict[str, Any]:
-        # Create via Pillow then open path for consistency; live path still uses GIMP for transforms
         try:
             from PIL import Image
         except ImportError:
@@ -216,20 +365,13 @@ class LiveBackend:
         except KeyError:
             return {"ok": False, "error": f"unknown image_id={image_id}"}
         out = self._ws / f"{image_id}_resize.png"
-        src_s, out_s = src.as_posix(), out.as_posix()
-        script = f"""
-(let* (
-  (image (car (gimp-file-load RUN-NONINTERACTIVE "{src_s}" "{src_s}")))
-  (drawable (car (gimp-image-get-active-layer image)))
-)
-  (gimp-image-scale image {int(width)} {int(height)})
-  (file-png-save RUN-NONINTERACTIVE image drawable "{out_s}" "{out_s}" 0 9 0 0 0 0 0)
-  (gimp-image-delete image)
-)
-"""
-        result = self._run_script_fu(script)
+        if out.exists():
+            try:
+                out.unlink()
+            except OSError:
+                pass
+        result = self._scale_with_gimp(src, out, width, height)
         if not result.get("ok") or not out.is_file():
-            # Fallback to Pillow if GIMP batch fails but we need a result for demos
             try:
                 from PIL import Image
 
@@ -246,7 +388,6 @@ class LiveBackend:
         return {"ok": True, "image": dict(self._images[image_id]), "gimp": result}
 
     def crop(self, image_id: str, x: int, y: int, width: int, height: int) -> dict[str, Any]:
-        # Prefer Pillow for crop reliability across GIMP versions
         try:
             from PIL import Image
 
@@ -290,7 +431,7 @@ class LiveBackend:
         return self._pillow_op(image_id, "text", text=text, x=x, y=y, size=size, color=color)
 
     def _pillow_op(self, image_id: str, op: str, **kwargs: Any) -> dict[str, Any]:
-        """Live assists Pillow for filters when Script-Fu PDB differs across GIMP 2/3."""
+        """Pillow assist for filters when full PDB batch is not needed."""
         try:
             from PIL import Image, ImageDraw, ImageFilter, ImageOps
 
@@ -325,7 +466,7 @@ class LiveBackend:
                 "image": dict(self._images[image_id]),
                 "engine": "pillow-assist",
                 "gimp_available": d.get("ok"),
-                "note": "Filter applied with Pillow assist; resize uses gimp-console Script-Fu when available",
+                "note": "Filter via Pillow assist; resize uses gimp-console when available",
             }
         except Exception as e:
             return {"ok": False, "error": str(e)}
@@ -345,7 +486,7 @@ class LiveBackend:
     def batch_resize(
         self, input_dir: str, output_dir: str, width: int, height: int
     ) -> dict[str, Any]:
-        """Batch resize via GIMP Script-Fu when possible, else Pillow."""
+        """Batch resize via GIMP when possible, else Pillow."""
         inp, outp = Path(input_dir), Path(output_dir)
         if not inp.is_dir():
             return {"ok": False, "error": f"input_dir not found: {input_dir}"}
@@ -356,25 +497,17 @@ class LiveBackend:
             if p.suffix.lower() in {".png", ".jpg", ".jpeg", ".webp", ".bmp"}
         ]
         done: list[str] = []
+        engines: list[str] = []
         gimp_ok = bool(self.doctor().get("ok"))
         for p in files:
-            dest = outp / p.name
+            dest = outp / (p.stem + ".png")
+            used = "pillow"
             if gimp_ok:
-                script = f"""
-(let* (
-  (image (car (gimp-file-load RUN-NONINTERACTIVE "{p.as_posix()}" "{p.as_posix()}")))
-  (drawable (car (gimp-image-get-active-layer image)))
-)
-  (gimp-image-scale image {int(width)} {int(height)})
-  (file-png-save RUN-NONINTERACTIVE image drawable "{dest.with_suffix('.png').as_posix()}" "{dest.with_suffix('.png').as_posix()}" 0 9 0 0 0 0 0)
-  (gimp-image-delete image)
-)
-"""
-                r = self._run_script_fu(script)
-                if r.get("ok") and dest.with_suffix(".png").is_file():
-                    done.append(str(dest.with_suffix(".png")))
+                r = self._scale_with_gimp(p, dest, width, height)
+                if r.get("ok") and dest.is_file():
+                    done.append(str(dest))
+                    engines.append(str(r.get("engine") or "gimp"))
                     continue
-            # pillow fallback
             try:
                 from PIL import Image
 
@@ -382,12 +515,14 @@ class LiveBackend:
                 im = im.resize((max(1, int(width)), max(1, int(height))), Image.Resampling.LANCZOS)
                 im.save(dest)
                 done.append(str(dest))
+                engines.append(used)
             except Exception:
                 continue
         return {
             "ok": True,
             "count": len(done),
             "files": done,
+            "engines": engines,
             "width": width,
             "height": height,
             "gimp_console": discover_gimp_console(),
