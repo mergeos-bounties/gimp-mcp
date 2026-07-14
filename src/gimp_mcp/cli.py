@@ -130,6 +130,76 @@ def live_smoke_cmd(
     rprint("gimp-mcp live-smoke complete.")
 
 
+@app.command("logo")
+def logo_cmd(
+    font: str = typer.Option("HelvetIns", "--font", "-f", help="UTM alias: HelvetIns, AvoBold, TimesBold, SwissBold…"),
+    style: str = typer.Option("flat", "--style", "-s", help="flat | gradient | twist-depth"),
+    styles: str = typer.Option("", "--styles", help="Comma list, e.g. flat,gradient"),
+    src: str = typer.Option(
+        str(Path.home() / "Downloads" / "Logo-luxury-original.png"),
+        "--src",
+        help="Source full logo PNG",
+    ),
+    out_dir: str = typer.Option(str(Path.home() / "Downloads"), "--out-dir", "-o"),
+    main: bool = typer.Option(False, "--main", help="Also write Logo-luxury.png"),
+    proof: bool = typer.Option(False, "--proof", help="Write plain font proof"),
+    list_fonts: bool = typer.Option(False, "--list-fonts", help="List UTM fonts"),
+    all_fonts: bool = typer.Option(False, "--all-fonts"),
+) -> None:
+    """Build NHÀ HÀNG GOLD ONE logo variants (UTM fonts, quality flat)."""
+    import subprocess
+    import sys
+
+    script = Path(__file__).resolve().parents[2] / "scripts" / "logo_variants.py"
+    if not script.is_file():
+        # installed package: look next to site or repo
+        script = Path(__file__).resolve().parents[1].parent / "scripts" / "logo_variants.py"
+    # develop layout: repo/scripts
+    repo_script = Path(r"D:\ThanhTrucSolutions\mcp\GIMP-mcp\scripts\logo_variants.py")
+    if repo_script.is_file():
+        script = repo_script
+    if not script.is_file():
+        rprint({"ok": False, "error": f"logo script not found: {script}"})
+        raise typer.Exit(1)
+
+    cmd = [sys.executable, str(script)]
+    if list_fonts:
+        cmd.append("--list-fonts")
+    else:
+        cmd += ["--font", font, "--src", src, "--out-dir", out_dir]
+        if styles:
+            cmd += ["--styles", styles]
+        else:
+            cmd += ["--style", style]
+        if main:
+            cmd.append("--main")
+        if proof:
+            cmd.append("--proof")
+        if all_fonts:
+            cmd.append("--all-fonts")
+    rprint({"cmd": cmd})
+    raise typer.Exit(subprocess.call(cmd))
+
+
+@app.command("logo-flat")
+def logo_flat_cmd(
+    font: str = typer.Option("HelvetIns", "--font", "-f"),
+    main: bool = typer.Option(True, "--main/--no-main"),
+) -> None:
+    """Shortcut: high-quality flat logo (no aggressive de-glow)."""
+    logo_cmd(
+        font=font,
+        style="flat",
+        styles="",
+        src=str(Path.home() / "Downloads" / "Logo-luxury-original.png"),
+        out_dir=str(Path.home() / "Downloads"),
+        main=main,
+        proof=True,
+        list_fonts=False,
+        all_fonts=False,
+    )
+
+
 @app.command("process")
 def process_cmd(
     image: str = typer.Argument(..., help="Input image path"),

@@ -12,3 +12,8 @@ examples/real-run/
 _gimp_out.txt
 _gimp_err.txt
 
+
+assets/fonts/utm-full/
+assets/fonts/utm-pack/
+assets/fonts/utm-real/
+
