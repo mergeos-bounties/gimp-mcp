@@ -12,7 +12,7 @@
 | **mock** (default) | Pillow | CI, offline, no GIMP install |
 | **live** | `gimp-console` batch + Pillow assist | Machine with GIMP 2.10 / 3.x |
 
-**Product:** [mergeos-bounties/gimp-mcp](https://github.com/mergeos-bounties/gimp-mcp)
+**Product:** [mergeos-bounties/gimp-mcp](https://github.com/mergeos-bounties/gimp-mcp) · Funded: **`prj_0525`**
 
 ---
 
