@@ -155,9 +155,16 @@ def extract_emblem_layered(
 
 
 def extract_emblem_soft(src: Path, keep_bottom: int = 712) -> Image.Image:
-    """Flat: binary matte, no AA (prevents white-bg haze)."""
+    """Flat: binary matte, no AA; erode 1px to drop dark outer bloom rim."""
     return extract_emblem_layered(
-        src, keep_bottom, hard=True, thr=34.0, aa=0.0, hard_thr=70.0, dilate=1
+        src,
+        keep_bottom,
+        hard=True,
+        thr=38.0,
+        aa=0.0,
+        hard_thr=80.0,
+        dilate=0,
+        erode=1,
     )
 
 
