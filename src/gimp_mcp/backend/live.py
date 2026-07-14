@@ -162,6 +162,8 @@ class LiveBackend:
                 "resize",
                 "thumbnail",
                 "crop",
+                "crop_bottom",
+                "crop_percent",
                 "flip",
                 "rotate",
                 "blur",
@@ -170,8 +172,16 @@ class LiveBackend:
                 "invert",
                 "brightness",
                 "contrast",
+                "saturation",
                 "auto_orient",
                 "text",
+                "erase_rect",
+                "fill_rect",
+                "remove_background",
+                "trim",
+                "pad",
+                "border",
+                "opacity",
                 "export",
                 "batch_resize",
                 "pipeline",
@@ -353,9 +363,10 @@ class LiveBackend:
         iid = self._id()
         dest = self._ws / f"{iid}.png"
         try:
-            im = ops.load_rgb(p)
+            im = ops.load_image(p, keep_alpha=True)
             im.save(dest)
             w, h = im.size
+            mode = im.mode
         except Exception as e:
             return {"ok": False, "error": str(e)}
         meta = {
@@ -363,7 +374,7 @@ class LiveBackend:
             "path": str(dest),
             "width": w,
             "height": h,
-            "mode": "RGB",
+            "mode": mode,
             "source": "live-open",
             "original": str(p),
         }
@@ -393,6 +404,11 @@ class LiveBackend:
             {"path": str(out), "width": im.width, "height": im.height, "mode": im.mode}
         )
         return dict(self._images[image_id])
+
+    def _load_im(self, image_id: str) -> Any:
+        from gimp_mcp import ops
+
+        return ops.load_image(self._path(image_id), keep_alpha=True)
 
     def resize(self, image_id: str, width: int, height: int) -> dict[str, Any]:
         from gimp_mcp import ops
@@ -428,6 +444,21 @@ class LiveBackend:
     def crop(self, image_id: str, x: int, y: int, width: int, height: int) -> dict[str, Any]:
         return self._pillow_op(image_id, "crop", x=x, y=y, width=width, height=height)
 
+    def crop_bottom(self, image_id: str, keep_height: int) -> dict[str, Any]:
+        return self._pillow_op(image_id, "crop_bottom", keep_height=keep_height)
+
+    def crop_percent(
+        self,
+        image_id: str,
+        left: float = 0.0,
+        top: float = 0.0,
+        right: float = 1.0,
+        bottom: float = 1.0,
+    ) -> dict[str, Any]:
+        return self._pillow_op(
+            image_id, "crop_percent", left=left, top=top, right=right, bottom=bottom
+        )
+
     def flip(self, image_id: str, direction: str = "horizontal") -> dict[str, Any]:
         return self._pillow_op(image_id, "flip", direction=direction)
 
@@ -452,6 +483,9 @@ class LiveBackend:
     def contrast(self, image_id: str, factor: float = 1.2) -> dict[str, Any]:
         return self._pillow_op(image_id, "contrast", factor=factor)
 
+    def saturation(self, image_id: str, factor: float = 1.2) -> dict[str, Any]:
+        return self._pillow_op(image_id, "saturation", factor=factor)
+
     def auto_orient(self, image_id: str) -> dict[str, Any]:
         return self._pillow_op(image_id, "auto_orient")
 
@@ -466,11 +500,78 @@ class LiveBackend:
     ) -> dict[str, Any]:
         return self._pillow_op(image_id, "text", text=text, x=x, y=y, size=size, color=color)
 
+    def erase_rect(
+        self,
+        image_id: str,
+        x: int,
+        y: int,
+        width: int,
+        height: int,
+        fill: str = "#000000",
+        transparent: bool = False,
+    ) -> dict[str, Any]:
+        return self._pillow_op(
+            image_id,
+            "erase_rect",
+            x=x,
+            y=y,
+            width=width,
+            height=height,
+            fill=fill,
+            transparent=transparent,
+        )
+
+    def fill_rect(
+        self, image_id: str, x: int, y: int, width: int, height: int, color: str = "#000000"
+    ) -> dict[str, Any]:
+        return self._pillow_op(
+            image_id, "fill_rect", x=x, y=y, width=width, height=height, color=color
+        )
+
+    def remove_background(
+        self, image_id: str, mode: str = "black", threshold: int = 28, soft: int = 40
+    ) -> dict[str, Any]:
+        return self._pillow_op(
+            image_id, "remove_background", mode=mode, threshold=threshold, soft=soft
+        )
+
+    def trim(
+        self,
+        image_id: str,
+        padding: int = 8,
+        alpha_threshold: int = 10,
+        bg_mode: str = "auto",
+    ) -> dict[str, Any]:
+        return self._pillow_op(
+            image_id,
+            "trim",
+            padding=padding,
+            alpha_threshold=alpha_threshold,
+            bg_mode=bg_mode,
+        )
+
+    def pad(
+        self,
+        image_id: str,
+        padding: int = 32,
+        color: str = "#000000",
+        transparent: bool = False,
+    ) -> dict[str, Any]:
+        return self._pillow_op(
+            image_id, "pad", padding=padding, color=color, transparent=transparent
+        )
+
+    def border(self, image_id: str, width: int = 4, color: str = "#ffffff") -> dict[str, Any]:
+        return self._pillow_op(image_id, "border", width=width, color=color)
+
+    def opacity(self, image_id: str, factor: float = 1.0) -> dict[str, Any]:
+        return self._pillow_op(image_id, "opacity", factor=factor)
+
     def pipeline(self, image_id: str, steps: list[dict[str, Any]]) -> dict[str, Any]:
         from gimp_mcp import ops
 
         try:
-            im = ops.load_rgb(self._path(image_id))
+            im = self._load_im(image_id)
             im, applied = ops.apply_pipeline(im, steps)
             meta = self._store(image_id, im, "pipeline")
             return {"ok": True, "image": meta, "applied": applied, "engine": "pillow-assist"}
@@ -484,48 +585,13 @@ class LiveBackend:
         from gimp_mcp import ops
 
         try:
-            im = ops.load_rgb(self._path(image_id))
-            if op == "flip":
-                im = ops.flip(im, str(kwargs.get("direction", "horizontal")))
-            elif op == "rotate":
-                im = ops.rotate(im, float(kwargs.get("degrees", 90)))
-            elif op == "blur":
-                im = ops.blur(im, float(kwargs.get("radius", 2)))
-            elif op == "sharpen":
-                im = ops.sharpen(
-                    im, float(kwargs.get("percent", 150)), float(kwargs.get("radius", 2))
-                )
-            elif op == "desaturate":
-                im = ops.desaturate(im)
-            elif op == "invert":
-                im = ops.invert(im)
-            elif op == "brightness":
-                im = ops.brightness(im, float(kwargs.get("factor", 1.2)))
-            elif op == "contrast":
-                im = ops.contrast(im, float(kwargs.get("factor", 1.2)))
-            elif op == "auto_orient":
-                im = ops.auto_orient(im)
-            elif op == "thumbnail":
-                im = ops.thumbnail(
-                    im, int(kwargs.get("max_width", 512)), int(kwargs.get("max_height", 512))
-                )
-            elif op == "crop":
-                im = ops.crop(
-                    im,
-                    int(kwargs["x"]),
-                    int(kwargs["y"]),
-                    int(kwargs["width"]),
-                    int(kwargs["height"]),
-                )
-            elif op == "text":
-                im = ops.text_overlay(
-                    im,
-                    str(kwargs.get("text", "")),
-                    int(kwargs.get("x", 10)),
-                    int(kwargs.get("y", 10)),
-                    int(kwargs.get("size", 32)),
-                    str(kwargs.get("color", "#000000")),
-                )
+            im = self._load_im(image_id)
+            if op not in ops.PIPELINE_OPS and op != "text":
+                # map text alias
+                pass
+            step_op = "text" if op == "text" else op
+            if step_op in ops.PIPELINE_OPS:
+                im = ops.PIPELINE_OPS[step_op](im, **kwargs)
             else:
                 return {"ok": False, "error": f"unknown op {op}"}
             meta = self._store(image_id, im, op)
@@ -546,7 +612,7 @@ class LiveBackend:
         from gimp_mcp import ops
 
         try:
-            im = ops.load_rgb(self._path(image_id))
+            im = self._load_im(image_id)
             info = ops.export(im, path, format)
             return {"ok": True, "image_id": image_id, **info}
         except KeyError:

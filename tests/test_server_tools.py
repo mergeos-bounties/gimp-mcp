@@ -11,9 +11,16 @@ def test_tool_functions_exist():
         "gimp_sharpen",
         "gimp_brightness",
         "gimp_contrast",
+        "gimp_saturation",
         "gimp_thumbnail",
         "gimp_pipeline",
         "gimp_close",
+        "gimp_crop_bottom",
+        "gimp_remove_background",
+        "gimp_trim",
+        "gimp_erase_rect",
+        "gimp_pad",
+        "gimp_border",
     ):
         assert hasattr(srv, name)
 

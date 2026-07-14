@@ -144,9 +144,91 @@ def gimp_contrast(image_id: str, factor: float = 1.2) -> str:
 
 
 @mcp.tool()
+def gimp_saturation(image_id: str, factor: float = 1.2) -> str:
+    """Adjust color saturation (1.0 = unchanged)."""
+    return _j(get_backend().saturation(image_id, factor))
+
+
+@mcp.tool()
 def gimp_auto_orient(image_id: str) -> str:
     """Apply EXIF orientation."""
     return _j(get_backend().auto_orient(image_id))
+
+
+@mcp.tool()
+def gimp_crop_bottom(image_id: str, keep_height: int) -> str:
+    """Keep only the top keep_height pixels (drop bottom strip / tagline)."""
+    return _j(get_backend().crop_bottom(image_id, keep_height))
+
+
+@mcp.tool()
+def gimp_crop_percent(
+    image_id: str,
+    left: float = 0.0,
+    top: float = 0.0,
+    right: float = 1.0,
+    bottom: float = 1.0,
+) -> str:
+    """Crop by fractional bounds 0..1."""
+    return _j(get_backend().crop_percent(image_id, left, top, right, bottom))
+
+
+@mcp.tool()
+def gimp_erase_rect(
+    image_id: str,
+    x: int,
+    y: int,
+    width: int,
+    height: int,
+    fill: str = "#000000",
+    transparent: bool = False,
+) -> str:
+    """Fill/erase a rectangle (optionally transparent)."""
+    return _j(get_backend().erase_rect(image_id, x, y, width, height, fill, transparent))
+
+
+@mcp.tool()
+def gimp_fill_rect(
+    image_id: str, x: int, y: int, width: int, height: int, color: str = "#000000"
+) -> str:
+    """Fill a rectangle with solid color."""
+    return _j(get_backend().fill_rect(image_id, x, y, width, height, color))
+
+
+@mcp.tool()
+def gimp_remove_background(
+    image_id: str, mode: str = "black", threshold: int = 28, soft: int = 40
+) -> str:
+    """Remove near-black or near-white background to transparency."""
+    return _j(get_backend().remove_background(image_id, mode, threshold, soft))
+
+
+@mcp.tool()
+def gimp_trim(
+    image_id: str, padding: int = 8, alpha_threshold: int = 10, bg_mode: str = "auto"
+) -> str:
+    """Autocrop empty margins."""
+    return _j(get_backend().trim(image_id, padding, alpha_threshold, bg_mode))
+
+
+@mcp.tool()
+def gimp_pad(
+    image_id: str, padding: int = 32, color: str = "#000000", transparent: bool = False
+) -> str:
+    """Add padding around the image."""
+    return _j(get_backend().pad(image_id, padding, color, transparent))
+
+
+@mcp.tool()
+def gimp_border(image_id: str, width: int = 4, color: str = "#ffffff") -> str:
+    """Add a border."""
+    return _j(get_backend().border(image_id, width, color))
+
+
+@mcp.tool()
+def gimp_opacity(image_id: str, factor: float = 1.0) -> str:
+    """Multiply alpha channel by factor."""
+    return _j(get_backend().opacity(image_id, factor))
 
 
 @mcp.tool()
@@ -166,8 +248,9 @@ def gimp_text_overlay(
 def gimp_pipeline(image_id: str, steps_json: str) -> str:
     """
     Apply a multi-step recipe. steps_json is a JSON array of objects with 'op' plus params.
-    Ops: auto_orient, resize, thumbnail, crop, flip, rotate, blur, sharpen,
-    desaturate, invert, brightness, contrast, text.
+    Ops include: auto_orient, resize, thumbnail, crop, crop_bottom, crop_percent, flip,
+    rotate, blur, sharpen, desaturate, invert, brightness, contrast, saturation, text,
+    erase_rect, fill_rect, remove_background, trim, pad, border, opacity.
     """
     steps = json.loads(steps_json)
     if not isinstance(steps, list):

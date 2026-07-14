@@ -18,6 +18,8 @@ OPS_LIST = [
     "resize",
     "thumbnail",
     "crop",
+    "crop_bottom",
+    "crop_percent",
     "flip",
     "rotate",
     "blur",
@@ -26,8 +28,16 @@ OPS_LIST = [
     "invert",
     "brightness",
     "contrast",
+    "saturation",
     "auto_orient",
     "text",
+    "erase_rect",
+    "fill_rect",
+    "remove_background",
+    "trim",
+    "pad",
+    "border",
+    "opacity",
     "export",
     "batch_resize",
     "pipeline",
@@ -54,8 +64,12 @@ class MockBackend:
     def _save_meta(self, image_id: str, im: Image.Image, path: Path | None = None) -> dict[str, Any]:
         meta = self._images.get(image_id) or {"id": image_id}
         if path is None:
-            path = self._ws / f"{image_id}.png"
-        im.save(path)
+            ext = ".png" if im.mode == "RGBA" else ".png"
+            path = self._ws / f"{image_id}{ext}"
+        if im.mode == "RGBA":
+            im.save(path)
+        else:
+            im.convert("RGB").save(path)
         meta.update(
             {
                 "id": image_id,
@@ -113,7 +127,7 @@ class MockBackend:
         if not p.is_file():
             return {"ok": False, "error": f"file not found: {path}"}
         try:
-            im = ops.load_rgb(p)
+            im = ops.load_image(p, keep_alpha=True)
         except Exception as e:
             return {"ok": False, "error": str(e)}
         iid = self._new_id()
@@ -128,11 +142,12 @@ class MockBackend:
 
     def _load(self, image_id: str) -> Image.Image:
         meta = self._get(image_id)
-        return Image.open(meta["path"]).convert("RGB")
+        return ops.load_image(meta["path"], keep_alpha=True)
 
     def _apply(self, image_id: str, fn, **kwargs: Any) -> dict[str, Any]:
         try:
-            im = fn(self._load(image_id), **kwargs) if kwargs else fn(self._load(image_id))
+            im = self._load(image_id)
+            im = fn(im, **kwargs) if kwargs else fn(im)
             return {"ok": True, "image": self._save_meta(image_id, im)}
         except KeyError as e:
             return {"ok": False, "error": str(e)}
@@ -147,6 +162,21 @@ class MockBackend:
 
     def crop(self, image_id: str, x: int, y: int, width: int, height: int) -> dict[str, Any]:
         return self._apply(image_id, ops.crop, x=x, y=y, width=width, height=height)
+
+    def crop_bottom(self, image_id: str, keep_height: int) -> dict[str, Any]:
+        return self._apply(image_id, ops.crop_bottom, keep_height=keep_height)
+
+    def crop_percent(
+        self,
+        image_id: str,
+        left: float = 0.0,
+        top: float = 0.0,
+        right: float = 1.0,
+        bottom: float = 1.0,
+    ) -> dict[str, Any]:
+        return self._apply(
+            image_id, ops.crop_percent, left=left, top=top, right=right, bottom=bottom
+        )
 
     def flip(self, image_id: str, direction: str = "horizontal") -> dict[str, Any]:
         return self._apply(image_id, ops.flip, direction=direction)
@@ -172,6 +202,9 @@ class MockBackend:
     def contrast(self, image_id: str, factor: float = 1.2) -> dict[str, Any]:
         return self._apply(image_id, ops.contrast, factor=factor)
 
+    def saturation(self, image_id: str, factor: float = 1.2) -> dict[str, Any]:
+        return self._apply(image_id, ops.saturation, factor=factor)
+
     def auto_orient(self, image_id: str) -> dict[str, Any]:
         return self._apply(image_id, ops.auto_orient)
 
@@ -191,6 +224,73 @@ class MockBackend:
             r["text"] = text
             r["size"] = size
         return r
+
+    def erase_rect(
+        self,
+        image_id: str,
+        x: int,
+        y: int,
+        width: int,
+        height: int,
+        fill: str = "#000000",
+        transparent: bool = False,
+    ) -> dict[str, Any]:
+        return self._apply(
+            image_id,
+            ops.erase_rect,
+            x=x,
+            y=y,
+            width=width,
+            height=height,
+            fill=fill,
+            transparent=transparent,
+        )
+
+    def fill_rect(
+        self, image_id: str, x: int, y: int, width: int, height: int, color: str = "#000000"
+    ) -> dict[str, Any]:
+        return self._apply(
+            image_id, ops.fill_rect, x=x, y=y, width=width, height=height, color=color
+        )
+
+    def remove_background(
+        self, image_id: str, mode: str = "black", threshold: int = 28, soft: int = 40
+    ) -> dict[str, Any]:
+        return self._apply(
+            image_id, ops.remove_background, mode=mode, threshold=threshold, soft=soft
+        )
+
+    def trim(
+        self,
+        image_id: str,
+        padding: int = 8,
+        alpha_threshold: int = 10,
+        bg_mode: str = "auto",
+    ) -> dict[str, Any]:
+        return self._apply(
+            image_id,
+            ops.trim,
+            padding=padding,
+            alpha_threshold=alpha_threshold,
+            bg_mode=bg_mode,
+        )
+
+    def pad(
+        self,
+        image_id: str,
+        padding: int = 32,
+        color: str = "#000000",
+        transparent: bool = False,
+    ) -> dict[str, Any]:
+        return self._apply(
+            image_id, ops.pad, padding=padding, color=color, transparent=transparent
+        )
+
+    def border(self, image_id: str, width: int = 4, color: str = "#ffffff") -> dict[str, Any]:
+        return self._apply(image_id, ops.border, width=width, color=color)
+
+    def opacity(self, image_id: str, factor: float = 1.0) -> dict[str, Any]:
+        return self._apply(image_id, ops.opacity, factor=factor)
 
     def pipeline(self, image_id: str, steps: list[dict[str, Any]]) -> dict[str, Any]:
         try:
@@ -224,7 +324,7 @@ class MockBackend:
         for p in sorted(inp.iterdir()):
             if p.suffix.lower() not in {".png", ".jpg", ".jpeg", ".webp", ".bmp", ".gif"}:
                 continue
-            im = ops.load_rgb(p)
+            im = ops.load_image(p, keep_alpha=False)
             im = ops.resize(im, width, height)
             dest = outp / (p.stem + ".png")
             im.save(dest)

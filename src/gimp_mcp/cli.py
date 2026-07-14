@@ -32,6 +32,8 @@ TOOL_NAMES = [
     "gimp_resize",
     "gimp_thumbnail",
     "gimp_crop",
+    "gimp_crop_bottom",
+    "gimp_crop_percent",
     "gimp_flip",
     "gimp_rotate",
     "gimp_blur",
@@ -40,7 +42,15 @@ TOOL_NAMES = [
     "gimp_invert",
     "gimp_brightness",
     "gimp_contrast",
+    "gimp_saturation",
     "gimp_auto_orient",
+    "gimp_erase_rect",
+    "gimp_fill_rect",
+    "gimp_remove_background",
+    "gimp_trim",
+    "gimp_pad",
+    "gimp_border",
+    "gimp_opacity",
     "gimp_text_overlay",
     "gimp_pipeline",
     "gimp_export",
@@ -305,7 +315,63 @@ def call_cmd(
         "gimp_contrast": lambda: b.contrast(
             str(kv.get("image_id", "")), float(kv.get("factor", 1.2))
         ),
+        "gimp_saturation": lambda: b.saturation(
+            str(kv.get("image_id", "")), float(kv.get("factor", 1.2))
+        ),
         "gimp_auto_orient": lambda: b.auto_orient(str(kv.get("image_id", ""))),
+        "gimp_crop_bottom": lambda: b.crop_bottom(
+            str(kv.get("image_id", "")), int(kv.get("keep_height", 100))
+        ),
+        "gimp_crop_percent": lambda: b.crop_percent(
+            str(kv.get("image_id", "")),
+            float(kv.get("left", 0)),
+            float(kv.get("top", 0)),
+            float(kv.get("right", 1)),
+            float(kv.get("bottom", 1)),
+        ),
+        "gimp_erase_rect": lambda: b.erase_rect(
+            str(kv.get("image_id", "")),
+            int(kv.get("x", 0)),
+            int(kv.get("y", 0)),
+            int(kv.get("width", 10)),
+            int(kv.get("height", 10)),
+            str(kv.get("fill", "#000000")),
+            bool(kv.get("transparent", False)),
+        ),
+        "gimp_fill_rect": lambda: b.fill_rect(
+            str(kv.get("image_id", "")),
+            int(kv.get("x", 0)),
+            int(kv.get("y", 0)),
+            int(kv.get("width", 10)),
+            int(kv.get("height", 10)),
+            str(kv.get("color", "#000000")),
+        ),
+        "gimp_remove_background": lambda: b.remove_background(
+            str(kv.get("image_id", "")),
+            str(kv.get("mode", "black")),
+            int(kv.get("threshold", 28)),
+            int(kv.get("soft", 40)),
+        ),
+        "gimp_trim": lambda: b.trim(
+            str(kv.get("image_id", "")),
+            int(kv.get("padding", 8)),
+            int(kv.get("alpha_threshold", 10)),
+            str(kv.get("bg_mode", "auto")),
+        ),
+        "gimp_pad": lambda: b.pad(
+            str(kv.get("image_id", "")),
+            int(kv.get("padding", 32)),
+            str(kv.get("color", "#000000")),
+            bool(kv.get("transparent", False)),
+        ),
+        "gimp_border": lambda: b.border(
+            str(kv.get("image_id", "")),
+            int(kv.get("width", 4)),
+            str(kv.get("color", "#ffffff")),
+        ),
+        "gimp_opacity": lambda: b.opacity(
+            str(kv.get("image_id", "")), float(kv.get("factor", 1.0))
+        ),
         "gimp_text_overlay": lambda: b.text_overlay(
             str(kv.get("image_id", "")),
             str(kv.get("text", "")),

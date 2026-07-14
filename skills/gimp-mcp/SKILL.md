@@ -124,7 +124,28 @@ Helper (plugin / skill scripts):
 
 ## MCP tools
 
-`gimp_mode`, `gimp_doctor`, `gimp_seed_demo`, `gimp_list_images`, `gimp_close`, `gimp_new_image`, `gimp_open`, `gimp_info`, `gimp_resize`, `gimp_thumbnail`, `gimp_crop`, `gimp_flip`, `gimp_rotate`, `gimp_blur`, `gimp_sharpen`, `gimp_desaturate`, `gimp_invert`, `gimp_brightness`, `gimp_contrast`, `gimp_auto_orient`, `gimp_text_overlay`, `gimp_pipeline`, `gimp_export`, `gimp_batch_resize`.
+Session: `gimp_mode`, `gimp_doctor`, `gimp_seed_demo`, `gimp_list_images`, `gimp_close`, `gimp_new_image`, `gimp_open`, `gimp_info`
+
+Geometry: `gimp_resize`, `gimp_thumbnail`, `gimp_crop`, `gimp_crop_bottom`, `gimp_crop_percent`, `gimp_flip`, `gimp_rotate`, `gimp_trim`, `gimp_pad`, `gimp_border`
+
+Color / FX: `gimp_blur`, `gimp_sharpen`, `gimp_desaturate`, `gimp_invert`, `gimp_brightness`, `gimp_contrast`, `gimp_saturation`, `gimp_auto_orient`, `gimp_opacity`, `gimp_remove_background`
+
+Paint: `gimp_text_overlay`, `gimp_erase_rect`, `gimp_fill_rect`
+
+Batch / recipes: `gimp_pipeline`, `gimp_export`, `gimp_batch_resize`
+
+### Logo cleanup recipe (drop bottom tagline + transparent)
+
+```python
+# gimp_pipeline steps_json:
+[
+  {"op": "crop_bottom", "keep_height": 920},
+  {"op": "remove_background", "mode": "black", "threshold": 24, "soft": 45},
+  {"op": "trim", "padding": 20},
+  {"op": "pad", "padding": 24, "transparent": true}
+]
+# then gimp_export to absolute PNG path
+```
 
 Params: [references/tools-reference.md](references/tools-reference.md)  
 Recipes: [references/workflows.md](references/workflows.md)

@@ -1,6 +1,6 @@
 {
   "name": "gimp-mcp",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "GIMP image ops (Pillow mock + gimp-console live). One-command install from GitHub for Grok + MCP hosts.",
   "author": {
     "name": "MergeOS / ThanhTrucSolutions",
