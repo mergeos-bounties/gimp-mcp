@@ -112,3 +112,11 @@ See [docs/BOUNTY.md](docs/BOUNTY.md).
 ## License
 
 MIT — see [LICENSE](LICENSE).
+
+## Live test note (maintainer)
+
+Verified on Windows with GIMP **3.2.4** at:
+`%LOCALAPPDATA%\Programs\GIMP 3\bin\gimp-console.exe`
+
+- `gimp-mcp doctor` (live) detects console and version
+- `gimp-mcp live-smoke` completes (resize may use Pillow assist if Script-Fu batch times out on GIMP 3)
