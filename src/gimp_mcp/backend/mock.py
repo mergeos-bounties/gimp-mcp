@@ -340,3 +340,59 @@ class MockBackend:
             im.save(dest)
             done.append(str(dest))
         return {"ok": True, "count": len(done), "files": done, "width": width, "height": height}
+
+    def emboss(self, image_id: str) -> dict[str, Any]:
+        return self._apply(image_id, ops.emboss)
+
+    def stroke_rect(
+        self, image_id: str, x: int, y: int, width: int, height: int,
+        color: str = "#000000", line_width: int = 2,
+    ) -> dict[str, Any]:
+        return self._apply(image_id, ops.stroke_rect, x=x, y=y, width=width, height=height, color=color, line_width=line_width)
+
+    def histogram(self, image_id: str) -> dict[str, Any]:
+        try:
+            im = self._load(image_id)
+            stats = ops.histogram_info(im)
+            return {"ok": True, "image_id": image_id, "histogram": stats}
+        except KeyError as e:
+            return {"ok": False, "error": str(e)}
+
+    def exif_stub(self, image_id: str) -> dict[str, Any]:
+        """Mock EXIF metadata stub."""
+        meta = self._images.get(image_id, {})
+        return {
+            "ok": True,
+            "image_id": image_id,
+            "exif": {
+                "make": "GIMP-MCP-Mock",
+                "model": "Pillow",
+                "width": meta.get("width", 0),
+                "height": meta.get("height", 0),
+                "mode": meta.get("mode", "?"),
+            }
+        }
+
+    def layers(self, image_id: str) -> dict[str, Any]:
+        """List layers (mock: single layer per image)."""
+        meta = self._images.get(image_id, {})
+        return {
+            "ok": True,
+            "image_id": image_id,
+            "layers": [{"name": "Background", "visible": True, "opacity": 1.0, "mode": meta.get("mode", "?")}],
+            "count": 1,
+        }
+
+    def flatten_image(self, image_id: str) -> dict[str, Any]:
+        """Flatten image (mock: no-op)."""
+        return self._apply(image_id, lambda im: im.convert("RGB") if im.mode == "RGBA" else im)
+
+    def python_fu_eval(self, image_id: str, code: str) -> dict[str, Any]:
+        """Mock GIMP 3 python-fu-eval batch path stub."""
+        return {
+            "ok": True,
+            "image_id": image_id,
+            "mode": "mock",
+            "message": "python-fu-eval not available in mock mode. Use GIMP 3 with: gimp-mcp --mode live",
+            "code_length": len(code),
+        }

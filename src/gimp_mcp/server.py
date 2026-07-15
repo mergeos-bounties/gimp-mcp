@@ -282,3 +282,48 @@ def gimp_batch_resize(input_dir: str, output_dir: str, width: int = 256, height:
 
 def run_stdio() -> None:
     mcp.run(transport="stdio")
+
+
+@mcp.tool()
+def gimp_emboss(image_id: str) -> str:
+    """Apply emboss filter (edge-based)."""
+    return _j(get_backend().emboss(image_id))
+
+
+@mcp.tool()
+def gimp_stroke_rect(
+    image_id: str, x: int, y: int, width: int, height: int,
+    color: str = "#000000", line_width: int = 2,
+) -> str:
+    """Draw rectangular outline on image."""
+    return _j(get_backend().stroke_rect(image_id, x, y, width, height, color, line_width))
+
+
+@mcp.tool()
+def gimp_histogram(image_id: str) -> str:
+    """Per-channel histogram statistics (min, max, mean, median)."""
+    return _j(get_backend().histogram(image_id))
+
+
+@mcp.tool()
+def gimp_exif(image_id: str) -> str:
+    """Mock EXIF metadata stub."""
+    return _j(get_backend().exif_stub(image_id))
+
+
+@mcp.tool()
+def gimp_layers(image_id: str) -> str:
+    """List image layers (mock: single layer)."""
+    return _j(get_backend().layers(image_id))
+
+
+@mcp.tool()
+def gimp_flatten(image_id: str) -> str:
+    """Flatten image (merge layers to RGB)."""
+    return _j(get_backend().flatten_image(image_id))
+
+
+@mcp.tool()
+def gimp_python_fu_eval(image_id: str, code: str) -> str:
+    """GIMP 3 python-fu-eval batch path (mock stub)."""
+    return _j(get_backend().python_fu_eval(image_id, code))
