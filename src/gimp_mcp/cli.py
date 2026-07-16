@@ -340,136 +340,178 @@ def call_cmd(
     name = tool if tool.startswith("gimp_") else f"gimp_{tool}"
     kv = _parse_kv(arg)
 
-    dispatch = {
-        "gimp_mode": lambda: switch_mode(str(kv.get("mode", get_mode()))),
-        "gimp_doctor": b.doctor,
-        "gimp_seed_demo": b.seed_demo,
-        "gimp_list_images": b.list_images,
-        "gimp_close": lambda: b.close_image(str(kv.get("image_id", ""))),
-        "gimp_new_image": lambda: b.new_image(
-            int(kv.get("width", 800)), int(kv.get("height", 600)), str(kv.get("color", "#ffffff"))
-        ),
-        "gimp_open": lambda: b.open_image(str(kv.get("path", ""))),
-        "gimp_info": lambda: b.info(str(kv.get("image_id", ""))),
-        "gimp_resize": lambda: b.resize(
-            str(kv.get("image_id", "")), int(kv.get("width", 256)), int(kv.get("height", 256))
-        ),
-        "gimp_thumbnail": lambda: b.thumbnail(
-            str(kv.get("image_id", "")),
-            int(kv.get("max_width", 512)),
-            int(kv.get("max_height", 512)),
-        ),
-        "gimp_crop": lambda: b.crop(
-            str(kv.get("image_id", "")),
-            int(kv.get("x", 0)),
-            int(kv.get("y", 0)),
-            int(kv.get("width", 100)),
-            int(kv.get("height", 100)),
-        ),
-        "gimp_flip": lambda: b.flip(
-            str(kv.get("image_id", "")), str(kv.get("direction", "horizontal"))
-        ),
-        "gimp_rotate": lambda: b.rotate(
-            str(kv.get("image_id", "")), float(kv.get("degrees", 90))
-        ),
-        "gimp_blur": lambda: b.blur(str(kv.get("image_id", "")), float(kv.get("radius", 2.0))),
-        "gimp_sharpen": lambda: b.sharpen(
-            str(kv.get("image_id", "")),
-            float(kv.get("percent", 150)),
-            float(kv.get("radius", 2.0)),
-        ),
-        "gimp_desaturate": lambda: b.desaturate(str(kv.get("image_id", ""))),
-        "gimp_invert": lambda: b.invert(str(kv.get("image_id", ""))),
-        "gimp_brightness": lambda: b.brightness(
-            str(kv.get("image_id", "")), float(kv.get("factor", 1.2))
-        ),
-        "gimp_contrast": lambda: b.contrast(
-            str(kv.get("image_id", "")), float(kv.get("factor", 1.2))
-        ),
-        "gimp_saturation": lambda: b.saturation(
-            str(kv.get("image_id", "")), float(kv.get("factor", 1.2))
-        ),
-        "gimp_auto_orient": lambda: b.auto_orient(str(kv.get("image_id", ""))),
-        "gimp_crop_bottom": lambda: b.crop_bottom(
-            str(kv.get("image_id", "")), int(kv.get("keep_height", 100))
-        ),
-        "gimp_crop_percent": lambda: b.crop_percent(
-            str(kv.get("image_id", "")),
-            float(kv.get("left", 0)),
-            float(kv.get("top", 0)),
-            float(kv.get("right", 1)),
-            float(kv.get("bottom", 1)),
-        ),
-        "gimp_erase_rect": lambda: b.erase_rect(
-            str(kv.get("image_id", "")),
-            int(kv.get("x", 0)),
-            int(kv.get("y", 0)),
-            int(kv.get("width", 10)),
-            int(kv.get("height", 10)),
-            str(kv.get("fill", "#000000")),
-            bool(kv.get("transparent", False)),
-        ),
-        "gimp_fill_rect": lambda: b.fill_rect(
-            str(kv.get("image_id", "")),
-            int(kv.get("x", 0)),
-            int(kv.get("y", 0)),
-            int(kv.get("width", 10)),
-            int(kv.get("height", 10)),
-            str(kv.get("color", "#000000")),
-        ),
-        "gimp_remove_background": lambda: b.remove_background(
-            str(kv.get("image_id", "")),
-            str(kv.get("mode", "black")),
-            int(kv.get("threshold", 28)),
-            int(kv.get("soft", 40)),
-        ),
-        "gimp_cutout": lambda: b.cutout(
-            str(kv.get("image_id", "")),
-            float(kv.get("thr", 40)),
-            bool(kv.get("hard", True)),
-            bool(kv.get("defringe", True)),
-        ),
-        "gimp_trim": lambda: b.trim(
-            str(kv.get("image_id", "")),
-            int(kv.get("padding", 8)),
-            int(kv.get("alpha_threshold", 10)),
-            str(kv.get("bg_mode", "auto")),
-        ),
-        "gimp_pad": lambda: b.pad(
-            str(kv.get("image_id", "")),
-            int(kv.get("padding", 32)),
-            str(kv.get("color", "#000000")),
-            bool(kv.get("transparent", False)),
-        ),
-        "gimp_border": lambda: b.border(
-            str(kv.get("image_id", "")),
-            int(kv.get("width", 4)),
-            str(kv.get("color", "#ffffff")),
-        ),
-        "gimp_opacity": lambda: b.opacity(
-            str(kv.get("image_id", "")), float(kv.get("factor", 1.0))
-        ),
-        "gimp_text_overlay": lambda: b.text_overlay(
-            str(kv.get("image_id", "")),
-            str(kv.get("text", "")),
-            int(kv.get("x", 10)),
-            int(kv.get("y", 10)),
-            int(kv.get("size", 32)),
-            str(kv.get("color", "#000000")),
-        ),
-        "gimp_pipeline": lambda: b.pipeline(
-            str(kv.get("image_id", "")),
-            json.loads(str(kv.get("steps_json", "[]"))),
-        ),
-        "gimp_export": lambda: b.export(
-            str(kv.get("image_id", "")), str(kv.get("path", "out.png")), kv.get("format")
-        ),
-        "gimp_batch_resize": lambda: b.batch_resize(
-            str(kv.get("input_dir", "")),
-            str(kv.get("output_dir", "")),
-            int(kv.get("width", 256)),
-            int(kv.get("height", 256)),
-        ),
+    # Dynamically dispatch all TOOL_NAMES from the backend
+    dispatch = {}
+    for tool_name in TOOL_NAMES:
+        if tool_name == "gimp_mode":
+            dispatch[tool_name] = lambda: switch_mode(str(kv.get("mode", get_mode())))
+        elif tool_name == "gimp_doctor":
+            dispatch[tool_name] = b.doctor
+        elif tool_name == "gimp_seed_demo":
+            dispatch[tool_name] = b.seed_demo
+        elif tool_name == "gimp_list_images":
+            dispatch[tool_name] = b.list_images
+        elif tool_name == "gimp_close":
+            dispatch[tool_name] = lambda: b.close_image(str(kv.get("image_id", "")))
+        elif tool_name == "gimp_new_image":
+            dispatch[tool_name] = lambda: b.new_image(
+                int(kv.get("width", 800)), int(kv.get("height", 600)), str(kv.get("color", "#ffffff"))
+            )
+        elif tool_name == "gimp_open":
+            dispatch[tool_name] = lambda: b.open_image(str(kv.get("path", "")))
+        elif tool_name == "gimp_info":
+            dispatch[tool_name] = lambda: b.info(str(kv.get("image_id", "")))
+        elif tool_name == "gimp_resize":
+            dispatch[tool_name] = lambda: b.resize(
+                str(kv.get("image_id", "")), int(kv.get("width", 256)), int(kv.get("height", 256))
+            )
+        elif tool_name == "gimp_thumbnail":
+            dispatch[tool_name] = lambda: b.thumbnail(
+                str(kv.get("image_id", "")),
+                int(kv.get("max_width", 512)),
+                int(kv.get("max_height", 512)),
+            )
+        elif tool_name == "gimp_crop":
+            dispatch[tool_name] = lambda: b.crop(
+                str(kv.get("image_id", "")),
+                int(kv.get("x", 0)),
+                int(kv.get("y", 0)),
+                int(kv.get("width", 100)),
+                int(kv.get("height", 100)),
+            )
+        elif tool_name == "gimp_flip":
+            dispatch[tool_name] = lambda: b.flip(
+                str(kv.get("image_id", "")), str(kv.get("direction", "horizontal"))
+            )
+        elif tool_name == "gimp_rotate":
+            dispatch[tool_name] = lambda: b.rotate(
+                str(kv.get("image_id", "")), float(kv.get("degrees", 90))
+            )
+        elif tool_name == "gimp_blur":
+            dispatch[tool_name] = lambda: b.blur(str(kv.get("image_id", "")), float(kv.get("radius", 2.0)))
+        elif tool_name == "gimp_sharpen":
+            dispatch[tool_name] = lambda: b.sharpen(
+                str(kv.get("image_id", "")),
+                float(kv.get("percent", 150)),
+                float(kv.get("radius", 2.0)),
+            )
+        elif tool_name == "gimp_desaturate":
+            dispatch[tool_name] = lambda: b.desaturate(str(kv.get("image_id", "")))
+        elif tool_name == "gimp_invert":
+            dispatch[tool_name] = lambda: b.invert(str(kv.get("image_id", "")))
+        elif tool_name == "gimp_brightness":
+            dispatch[tool_name] = lambda: b.brightness(
+                str(kv.get("image_id", "")), float(kv.get("factor", 1.2))
+            )
+        elif tool_name == "gimp_contrast":
+            dispatch[tool_name] = lambda: b.contrast(
+                str(kv.get("image_id", "")), float(kv.get("factor", 1.2))
+            )
+        elif tool_name == "gimp_saturation":
+            dispatch[tool_name] = lambda: b.saturation(
+                str(kv.get("image_id", "")), float(kv.get("factor", 1.2))
+            )
+        elif tool_name == "gimp_auto_orient":
+            dispatch[tool_name] = lambda: b.auto_orient(str(kv.get("image_id", "")))
+        elif tool_name == "gimp_crop_bottom":
+            dispatch[tool_name] = lambda: b.crop_bottom(
+                str(kv.get("image_id", "")), int(kv.get("keep_height", 100))
+            )
+        elif tool_name == "gimp_crop_percent":
+            dispatch[tool_name] = lambda: b.crop_percent(
+                str(kv.get("image_id", "")),
+                float(kv.get("left", 0)),
+                float(kv.get("top", 0)),
+                float(kv.get("right", 1)),
+                float(kv.get("bottom", 1)),
+            )
+        elif tool_name == "gimp_erase_rect":
+            dispatch[tool_name] = lambda: b.erase_rect(
+                str(kv.get("image_id", "")),
+                int(kv.get("x", 0)),
+                int(kv.get("y", 0)),
+                int(kv.get("width", 10)),
+                int(kv.get("height", 10)),
+                str(kv.get("fill", "#000000")),
+                bool(kv.get("transparent", False)),
+            )
+        elif tool_name == "gimp_fill_rect":
+            dispatch[tool_name] = lambda: b.fill_rect(
+                str(kv.get("image_id", "")),
+                int(kv.get("x", 0)),
+                int(kv.get("y", 0)),
+                int(kv.get("width", 10)),
+                int(kv.get("height", 10)),
+                str(kv.get("color", "#000000")),
+            )
+        elif tool_name == "gimp_remove_background":
+            dispatch[tool_name] = lambda: b.remove_background(
+                str(kv.get("image_id", "")),
+                str(kv.get("mode", "black")),
+                int(kv.get("threshold", 28)),
+                int(kv.get("soft", 40)),
+            )
+        elif tool_name == "gimp_cutout":
+            dispatch[tool_name] = lambda: b.cutout(
+                str(kv.get("image_id", "")),
+                float(kv.get("thr", 40)),
+                bool(kv.get("hard", True)),
+                bool(kv.get("defringe", True)),
+            )
+        elif tool_name == "gimp_trim":
+            dispatch[tool_name] = lambda: b.trim(
+                str(kv.get("image_id", "")),
+                int(kv.get("padding", 8)),
+                int(kv.get("alpha_threshold", 10)),
+                str(kv.get("bg_mode", "auto")),
+            )
+        elif tool_name == "gimp_pad":
+            dispatch[tool_name] = lambda: b.pad(
+                str(kv.get("image_id", "")),
+                int(kv.get("padding", 32)),
+                str(kv.get("color", "#000000")),
+                bool(kv.get("transparent", False)),
+            )
+        elif tool_name == "gimp_border":
+            dispatch[tool_name] = lambda: b.border(
+                str(kv.get("image_id", "")),
+                int(kv.get("width", 4)),
+                str(kv.get("color", "#ffffff")),
+            )
+        elif tool_name == "gimp_opacity":
+            dispatch[tool_name] = lambda: b.opacity(
+                str(kv.get("image_id", "")), float(kv.get("factor", 1.0))
+            )
+        elif tool_name == "gimp_text_overlay":
+            dispatch[tool_name] = lambda: b.text_overlay(
+                str(kv.get("image_id", "")),
+                str(kv.get("text", "")),
+                int(kv.get("x", 10)),
+                int(kv.get("y", 10)),
+                int(kv.get("size", 32)),
+                str(kv.get("color", "#000000")),
+            )
+        elif tool_name == "gimp_pipeline":
+            dispatch[tool_name] = lambda: b.pipeline(
+                str(kv.get("image_id", "")),
+                json.loads(str(kv.get("steps_json", "[]"))),
+            )
+        elif tool_name == "gimp_export":
+            dispatch[tool_name] = lambda: b.export(
+                str(kv.get("image_id", "")), str(kv.get("path", "out.png")), kv.get("format")
+            )
+        elif tool_name == "gimp_batch_resize":
+            dispatch[tool_name] = lambda: b.batch_resize(
+                str(kv.get("input_dir", "")),
+                str(kv.get("output_dir", "")),
+                int(kv.get("width", 256)),
+                int(kv.get("height", 256)),
+            )
+    
+    # Verify all TOOL_NAMES are dispatched
+    missing = set(TOOL_NAMES) - set(dispatch.keys())
+    if missing:
+        raise RuntimeError(f"Missing dispatch for: {missing}")
     }
     if name not in dispatch:
         raise typer.Exit(f"unknown tool {name}; try: gimp-mcp tools list")
