@@ -452,3 +452,33 @@ def apply_pipeline(im: Image.Image, steps: list[dict[str, Any]]) -> tuple[Image.
         cur = PIPELINE_OPS[op](cur, **params)
         applied.append(op)
     return cur, applied
+
+
+def emboss(im: Image.Image) -> Image.Image:
+    """Simple emboss via edge detection."""
+    from PIL import ImageFilter
+    gray = im.convert("L")
+    edges = gray.filter(ImageFilter.FIND_EDGES)
+    return Image.merge("RGB", (edges, edges, edges))
+
+
+def stroke_rect(
+    im: Image.Image, x: int, y: int, width: int, height: int,
+    color: str = "#000000", line_width: int = 2,
+) -> Image.Image:
+    """Draw a rectangular outline (stroke)."""
+    from PIL import ImageDraw
+    draw = ImageDraw.Draw(im)
+    draw.rectangle((x, y, x + width, y + height), outline=color, width=line_width)
+    return im
+
+
+def histogram_info(im: Image.Image) -> dict:
+    """Compute basic histogram stats per channel."""
+    import statistics
+    result = {}
+    for i, band in enumerate(im.getbands()):
+        data = list(im.getchannel(i).getdata())
+        if data:
+            result[band] = {"min": min(data), "max": max(data), "mean": round(statistics.mean(data), 1), "median": int(statistics.median(data))}
+    return result

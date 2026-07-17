@@ -673,3 +673,18 @@ class LiveBackend:
             "gimp_console": discover_gimp_console(),
         }
 
+
+    def emboss(self, image_id: str) -> dict[str, Any]:
+        return self._unavailable("emboss")
+    def stroke_rect(self, image_id: str, x: int, y: int, width: int, height: int, color: str = "#000000", line_width: int = 2) -> dict[str, Any]:
+        return self._unavailable("stroke_rect")
+    def histogram(self, image_id: str) -> dict[str, Any]:
+        return self._unavailable("histogram")
+    def exif_stub(self, image_id: str) -> dict[str, Any]:
+        return self._unavailable("exif_stub")
+    def layers(self, image_id: str) -> dict[str, Any]:
+        return self._unavailable("layers")
+    def flatten_image(self, image_id: str) -> dict[str, Any]:
+        return self._unavailable("flatten_image")
+    def python_fu_eval(self, image_id: str, code: str) -> dict[str, Any]:
+        return self._unavailable("python_fu_eval")
