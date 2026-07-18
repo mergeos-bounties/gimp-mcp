@@ -280,5 +280,23 @@ def gimp_batch_resize(input_dir: str, output_dir: str, width: int = 256, height:
     return _j(get_backend().batch_resize(input_dir, output_dir, width, height))
 
 
+@mcp.tool()
+def gimp_list_layers(image_id: str) -> str:
+    """List layers in the image (mock mode only)."""
+    return _j(get_backend().list_layers(image_id))
+
+
+@mcp.tool()
+def gimp_new_layer(image_id: str, name: str = "New Layer") -> str:
+    """Create a new transparent layer."""
+    return _j(get_backend().new_layer(image_id, name))
+
+
+@mcp.tool()
+def gimp_flatten(image_id: str) -> str:
+    """Flatten all layers into a single background layer."""
+    return _j(get_backend().flatten(image_id))
+
+
 def run_stdio() -> None:
     mcp.run(transport="stdio")

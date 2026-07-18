@@ -43,6 +43,9 @@ OPS_LIST = [
     "batch_resize",
     "pipeline",
     "close",
+    "list_layers",
+    "new_layer",
+    "flatten",
 ]
 
 
@@ -340,3 +343,41 @@ class MockBackend:
             im.save(dest)
             done.append(str(dest))
         return {"ok": True, "count": len(done), "files": done, "width": width, "height": height}
+
+    def list_layers(self, image_id: str) -> dict[str, Any]:
+        """List layers in the image (mock mode only)."""
+        try:
+            _ = self._get(image_id)
+            return {
+                "ok": True,
+                "layers": [
+                    {"name": "Background", "visible": True, "opacity": 1.0},
+                    {"name": "Layer 1", "visible": True, "opacity": 1.0},
+                ],
+            }
+        except KeyError as e:
+            return {"ok": False, "error": str(e)}
+
+    def new_layer(self, image_id: str, name: str = "New Layer") -> dict[str, Any]:
+        """Create a new transparent layer."""
+        try:
+            im = self._load(image_id)
+            # In mock mode, we just return success
+            # In real GIMP, this would create a new layer in the image
+            return {
+                "ok": True,
+                "message": f"Created new layer '{name}' in image {image_id}",
+                "layer_name": name,
+            }
+        except KeyError as e:
+            return {"ok": False, "error": str(e)}
+
+    def flatten(self, image_id: str) -> dict[str, Any]:
+        """Flatten all layers into a single background layer."""
+        try:
+            im = self._load(image_id)
+            # In mock mode, flatten just converts to RGB
+            flattened = im.convert("RGB")
+            return {"ok": True, "image": self._save_meta(image_id, flattened)}
+        except KeyError as e:
+            return {"ok": False, "error": str(e)}
