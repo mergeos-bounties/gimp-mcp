@@ -275,6 +275,24 @@ def gimp_export(image_id: str, path: str, format: str | None = None) -> str:
 
 
 @mcp.tool()
+def gimp_list_layers(image_id: str) -> str:
+    """List layers for an open image (mock mode)."""
+    return _j(get_backend().list_layers(image_id))
+
+
+@mcp.tool()
+def gimp_new_layer(image_id: str, name: str = "New Layer") -> str:
+    """Create a new transparent layer (mock mode)."""
+    return _j(get_backend().new_layer(image_id, name))
+
+
+@mcp.tool()
+def gimp_flatten(image_id: str) -> str:
+    """Flatten all layers (mock mode)."""
+    return _j(get_backend().flatten(image_id))
+
+
+@mcp.tool()
 def gimp_batch_resize(input_dir: str, output_dir: str, width: int = 256, height: int = 256) -> str:
     """Resize all images in a folder."""
     return _j(get_backend().batch_resize(input_dir, output_dir, width, height))
