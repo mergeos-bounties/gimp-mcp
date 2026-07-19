@@ -198,6 +198,38 @@ class LiveBackend:
             "error": "seed_demo is mock-only; use gimp_new_image or gimp_open in live",
         }
 
+    def list_layers(self, image_id: str) -> dict[str, Any]:
+        try:
+            im = self._load(image_id)
+        except KeyError as e:
+            return {"ok": False, "error": str(e)}
+        from gimp_mcp.layers_tools import list_layers_from_image
+        return {"ok": True, "layers": list_layers_from_image(im)}
+
+    def new_layer(self, image_id: str, name: str = "New Layer") -> dict[str, Any]:
+        try:
+            im = self._load(image_id)
+        except KeyError as e:
+            return {"ok": False, "error": str(e)}
+        from gimp_mcp.layers_tools import create_new_layer
+        new = create_new_layer(im, name)
+        iid = self._id()
+        dest = self._ws / f"{iid}.png"
+        meta = self._save_meta(iid, new, dest)
+        return {"ok": True, "layer_image": meta, "name": name}
+
+    def flatten(self, image_id: str) -> dict[str, Any]:
+        try:
+            im = self._load(image_id)
+        except KeyError as e:
+            return {"ok": False, "error": str(e)}
+        from gimp_mcp.layers_tools import flatten_image
+        flat = flatten_image(im)
+        iid = self._id()
+        dest = self._ws / f"{iid}.png"
+        meta = self._save_meta(iid, flat, dest)
+        return {"ok": True, "image": meta}
+
     def _run_python_fu(self, code: str) -> dict[str, Any]:
         """GIMP 3.x: python-fu-eval + --quit (exits cleanly in ~2s on Windows)."""
         exe = discover_gimp_console()
