@@ -56,6 +56,9 @@ TOOL_NAMES = [
     "gimp_pipeline",
     "gimp_export",
     "gimp_batch_resize",
+    "gimp_list_layers",
+    "gimp_new_layer",
+    "gimp_flatten",
 ]
 
 
@@ -500,27 +503,50 @@ def call_cmd(
             dispatch[tool_name] = lambda: b.export(
                 str(kv.get("image_id", "")), str(kv.get("path", "out.png")), kv.get("format")
             )
-        elif tool_name == "gimp_batch_resize":
-            dispatch[tool_name] = lambda: b.batch_resize(
-                str(kv.get("input_dir", "")),
-                str(kv.get("output_dir", "")),
-                int(kv.get("width", 256)),
-                int(kv.get("height", 256)),
+        elif tool_name == "gimp_list_layers":
+            dispatch[tool_name] = lambda: b.list_layers(str(kv.get("image_id", "")))
+        elif tool_name == "gimp_new_layer":
+            dispatch[tool_name] = lambda: b.new_layer(
+                str(kv.get("image_id", "")),
+                str(kv.get("name", "New Layer"))
             )
+        elif tool_name == "gimp_flatten":
+            dispatch[tool_name] = lambda: b.flatten(str(kv.get("image_id", "")))
     
     # Verify all TOOL_NAMES are dispatched
     missing = set(TOOL_NAMES) - set(dispatch.keys())
     if missing:
         raise RuntimeError(f"Missing dispatch for: {missing}")
-    }
     if name not in dispatch:
         raise typer.Exit(f"unknown tool {name}; try: gimp-mcp tools list")
     rprint(dispatch[name]())
 
 
-@app.command("serve")
-def serve_cmd() -> None:
-    """Run MCP stdio server."""
-    from gimp_mcp.server import run_stdio
+@app.command("layers")
+def layers_cmd(image_id: str = typer.Argument(..., help="Image ID to list layers")) -> None:
+    """List layers in the specified image."""
+    from gimp_mcp.backend import get_backend
+    b = get_backend()
+    result = b.list_layers(image_id)
+    rprint(result)
 
-    run_stdio()
+
+@app.command("new-layer")
+def new_layer_cmd(
+    image_id: str = typer.Argument(..., help="Image ID to add layer to"),
+    name: str = typer.Option("New Layer", help="Name of the new layer")
+) -> None:
+    """Create a new layer in the specified image."""
+    from gimp_mcp.backend import get_backend
+    b = get_backend()
+    result = b.new_layer(image_id, name)
+    rprint(result)
+
+
+@app.command("flatten")
+def flatten_cmd(image_id: str = typer.Argument(..., help="Image ID to flatten")) -> None:
+    """Flatten all layers in the specified image."""
+    from gimp_mcp.backend import get_backend
+    b = get_backend()
+    result = b.flatten(image_id)
+    rprint(result)

@@ -186,6 +186,9 @@ class LiveBackend:
                 "batch_resize",
                 "pipeline",
                 "close",
+                "list_layers",
+                "new_layer",
+                "flatten",
             ],
         }
 
@@ -671,5 +674,26 @@ class LiveBackend:
             "width": width,
             "height": height,
             "gimp_console": discover_gimp_console(),
+        }
+
+    def list_layers(self, image_id: str) -> dict[str, Any]:
+        """List layers in the image (live mode)."""
+        return {
+            "ok": False,
+            "error": "list_layers is mock-only; use in mock mode",
+        }
+
+    def new_layer(self, image_id: str, name: str = "New Layer") -> dict[str, Any]:
+        """Create a new layer in the image (live mode)."""
+        return {
+            "ok": False,
+            "error": "new_layer is mock-only; use in mock mode",
+        }
+
+    def flatten(self, image_id: str) -> dict[str, Any]:
+        """Flatten all layers in the image (live mode)."""
+        return {
+            "ok": False,
+            "error": "flatten is mock-only; use in mock mode",
         }
 
