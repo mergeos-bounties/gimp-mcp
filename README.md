@@ -184,6 +184,16 @@ Env:
 
 ---
 
+## Documentation
+
+| Doc | Contents |
+| --- | -------- |
+| [docs/GIMP_VERSIONS.md](docs/GIMP_VERSIONS.md) | GIMP 2.10 vs 3.x batch CLI matrix, GIMP_MCP_BIN discovery, migration guide |
+| [docs/GIMP_BATCH_FLAGS.md](docs/GIMP_BATCH_FLAGS.md) | Original batch flags quick reference |
+| [docs/BOUNTY.md](docs/BOUNTY.md) | MergeOS bounty info |
+
+---
+
 ## Development
 
 ```powershell
