@@ -513,6 +513,20 @@ def call_cmd(
         elif tool_name == "gimp_flatten":
             dispatch[tool_name] = lambda: b.flatten(str(kv.get("image_id", "")))
     
+﻿        elif tool_name == "gimp_mode":
+            dispatch[tool_name] = lambda: b.doctor() if not kv.get("mode") else switch_mode(str(kv.get("mode", "")))
+        elif tool_name == "gimp_batch_resize":
+            dispatch[tool_name] = lambda: b.batch_resize(
+                str(kv.get("input_dir", "")),
+                str(kv.get("output_dir", "")),
+                int(kv.get("width", 256)),
+                int(kv.get("height", 256)),
+            )
+        elif tool_name == "gimp_histogram":
+            dispatch[tool_name] = lambda: b.histogram(str(kv.get("image_id", "")))
+        elif tool_name == "gimp_exif":
+            dispatch[tool_name] = lambda: b.exif(str(kv.get("image_id", "")))
+
     # Verify all TOOL_NAMES are dispatched
     missing = set(TOOL_NAMES) - set(dispatch.keys())
     if missing:
