@@ -240,8 +240,17 @@ class LiveBackend:
                 "returncode": proc.returncode,
                 "log_tail": out[-2000:],
             }
-        except subprocess.TimeoutExpired:
-            return {"ok": False, "error": "gimp batch timed out", "engine": "python-fu-eval"}
+﻿        except subprocess.TimeoutExpired:
+            # Kill hung gimp-console process
+            import psutil
+            for proc in psutil.process_iter(["pid", "name"]):
+                try:
+                    if "gimp" in proc.info["name"].lower():
+                        proc.kill()
+                except Exception:
+                    pass
+            return {"ok": False, "error": "gimp batch timed out (process killed)", "engine": "python-fu-eval"}
+
         except OSError as e:
             return {"ok": False, "error": str(e), "engine": "python-fu-eval"}
         finally:
