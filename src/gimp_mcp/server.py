@@ -298,5 +298,18 @@ def gimp_flatten(image_id: str) -> str:
     return _j(get_backend().flatten(image_id))
 
 
+
+﻿@mcp.tool()
+def gimp_histogram(image_id: str) -> str:
+    """Get image histogram data (RGB channel distribution)."""
+    return _j(get_backend().histogram(image_id))
+
+
+@mcp.tool()
+def gimp_exif(image_id: str) -> str:
+    """Read EXIF metadata from image (camera, GPS, orientation)."""
+    return _j(get_backend().exif(image_id))
+
+
 def run_stdio() -> None:
     mcp.run(transport="stdio")
