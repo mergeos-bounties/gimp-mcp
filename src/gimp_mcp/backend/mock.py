@@ -120,6 +120,34 @@ class MockBackend:
         del self._images[image_id]
         return {"ok": True, "closed": image_id, "remaining": len(self._images)}
 
+    def list_layers(self, image_id: str) -> dict[str, Any]:
+        try:
+            im = self._load(image_id)
+        except KeyError as e:
+            return {"ok": False, "error": str(e)}
+        from gimp_mcp.layers_tools import list_layers_from_image
+        return {"ok": True, "image_id": image_id, "layers": list_layers_from_image(im)}
+
+    def new_layer(self, image_id: str, name: str = "New Layer") -> dict[str, Any]:
+        try:
+            im = self._load(image_id)
+        except KeyError as e:
+            return {"ok": False, "error": str(e)}
+        from gimp_mcp.layers_tools import create_new_layer
+        new = create_new_layer(im, name)
+        iid = self._new_id()
+        meta = self._save_meta(iid, new)
+        return {"ok": True, "image": meta, "name": name}
+
+    def flatten(self, image_id: str) -> dict[str, Any]:
+        try:
+            im = self._load(image_id)
+        except KeyError as e:
+            return {"ok": False, "error": str(e)}
+        from gimp_mcp.layers_tools import flatten_image
+        flat = flatten_image(im)
+        return {"ok": True, "image": self._save_meta(image_id, flat)}
+
     def new_image(self, width: int, height: int, color: str = "#ffffff") -> dict[str, Any]:
         w, h = max(1, int(width)), max(1, int(height))
         im = Image.new("RGB", (w, h), color)
