@@ -275,6 +275,44 @@ def gimp_export(image_id: str, path: str, format: str | None = None) -> str:
 
 
 @mcp.tool()
+def gimp_list_layers(image_id: str) -> str:
+    """List layers of an open image (mock mode)."""
+    from gimp_mcp.layers_tools import list_layers_from_image
+    b = get_backend()
+    try:
+        im = b._load(image_id)
+    except Exception as e:
+        return _j({"ok": False, "error": str(e)})
+    return _j({"ok": True, "layers": list_layers_from_image(im)})
+
+
+@mcp.tool()
+def gimp_new_layer(image_id: str, name: str = "New Layer") -> str:
+    """Create a new transparent layer (mock mode)."""
+    from gimp_mcp.layers_tools import create_new_layer
+    b = get_backend()
+    try:
+        im = b._load(image_id)
+        new = create_new_layer(im, name)
+        return _j({"ok": True, "image": b._save_meta(image_id, new)})
+    except Exception as e:
+        return _j({"ok": False, "error": str(e)})
+
+
+@mcp.tool()
+def gimp_flatten(image_id: str) -> str:
+    """Flatten image layers (mock mode)."""
+    from gimp_mcp.layers_tools import flatten_image
+    b = get_backend()
+    try:
+        im = b._load(image_id)
+        flat = flatten_image(im)
+        return _j({"ok": True, "image": b._save_meta(image_id, flat)})
+    except Exception as e:
+        return _j({"ok": False, "error": str(e)})
+
+
+@mcp.tool()
 def gimp_batch_resize(input_dir: str, output_dir: str, width: int = 256, height: int = 256) -> str:
     """Resize all images in a folder."""
     return _j(get_backend().batch_resize(input_dir, output_dir, width, height))
