@@ -381,3 +381,31 @@ class MockBackend:
             return {"ok": True, "image": self._save_meta(image_id, flattened)}
         except KeyError as e:
             return {"ok": False, "error": str(e)}
+
+﻿    def histogram(self, image_id: str) -> dict[str, Any]:
+        """Calculate RGB histogram data (mock)."""
+        try:
+            im = self._load(image_id)
+            from collections import Counter
+            pixels = list(im.getdata())
+            r = dict(Counter(p[0] for p in pixels))
+            g = dict(Counter(p[1] for p in pixels))
+            b = dict(Counter(p[2] for p in pixels))
+            return {"ok": True, "width": im.width, "height": im.height,
+                    "channels": {"red": r, "green": g, "blue": b}}
+        except KeyError as e:
+            return {"ok": False, "error": str(e)}
+
+    def exif(self, image_id: str) -> dict[str, Any]:
+        """Read EXIF metadata (mock)."""
+        try:
+            im = self._load(image_id)
+            try:
+                ex = im._getexif() or {}
+            except Exception:
+                ex = {}
+            return {"ok": True, "image_id": image_id,
+                    "exif": {str(k): str(v) for k, v in ex.items()}}
+        except KeyError as e:
+            return {"ok": False, "error": str(e)}
+
