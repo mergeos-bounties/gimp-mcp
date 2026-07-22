@@ -503,13 +503,9 @@ PIPELINE_OPS = {
     "pad": lambda im, **kw: pad(
         im, int(kw.get("padding", 32)), str(kw.get("color", "#000000")), bool(kw.get("transparent", False))
     ),
-    "select_rect": lambda im, **kw: select_rect(
-        im,
-        int(kw.get("x", 0)),
-        int(kw.get("y", 0)),
-        int(kw.get("width", im.width)),
-        int(kw.get("height", im.height)),
-    ),
+    # select_rect is a state management op, not a pixel transform.
+    # Must return the image unchanged for pipeline compatibility.
+    "select_rect": lambda im, **kw: im,
     "fill_selection": lambda im, **kw: fill_selection(
         im,
         int(kw.get("x", 0)),
