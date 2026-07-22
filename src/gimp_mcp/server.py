@@ -336,7 +336,7 @@ def gimp_flatten(image_id: str) -> str:
 
 
 
-﻿@mcp.tool()
+@mcp.tool()
 def gimp_histogram(image_id: str) -> str:
     """Get image histogram data (RGB channel distribution)."""
     return _j(get_backend().histogram(image_id))
