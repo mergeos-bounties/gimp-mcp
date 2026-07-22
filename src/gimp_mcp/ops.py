@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
-from PIL import Image, ImageDraw, ImageEnhance, ImageFilter, ImageFont, ImageOps
+from PIL import Image, ImageDraw, ImageEnhance, ImageFilter, ImageFont, ImageOps, ImagePalette
 
 
 def load_image(path: str | Path, keep_alpha: bool = True) -> Image.Image:
@@ -95,6 +95,17 @@ def rotate(im: Image.Image, degrees: float = 90) -> Image.Image:
     return im.rotate(-float(degrees), expand=True, fillcolor=fill)
 
 
+def _apply_pil_filter(im: Image.Image, filter_type: ImageFilter.Filter | ImageFilter.Kernel) -> Image.Image:
+    """Apply a PIL ImageFilter, preserving RGBA alpha."""
+    if im.mode == "RGBA":
+        a = im.split()[-1]
+        rgb = im.convert("RGB")
+        out = rgb.filter(filter_type)
+        out.putalpha(a)
+        return out
+    return im.convert("RGB").filter(filter_type)
+
+
 def blur(im: Image.Image, radius: float = 2.0) -> Image.Image:
     return im.filter(ImageFilter.GaussianBlur(radius=max(0.0, float(radius))))
 
@@ -105,6 +116,36 @@ def sharpen(im: Image.Image, percent: float = 150.0, radius: float = 2.0) -> Ima
             radius=max(0.1, float(radius)), percent=int(max(1, percent)), threshold=3
         )
     )
+
+
+def emboss(im: Image.Image) -> Image.Image:
+    """Apply emboss filter for a raised 3D effect."""
+    return _apply_pil_filter(im, ImageFilter.EMBOSS)
+
+
+def contour(im: Image.Image) -> Image.Image:
+    """Apply contour filter to highlight edges."""
+    return _apply_pil_filter(im, ImageFilter.CONTOUR)
+
+
+def edge_enhance(im: Image.Image) -> Image.Image:
+    """Enhance edges in the image."""
+    return _apply_pil_filter(im, ImageFilter.EDGE_ENHANCE)
+
+
+def find_edges(im: Image.Image) -> Image.Image:
+    """Detect and highlight edges (edge-detect filter)."""
+    return _apply_pil_filter(im, ImageFilter.FIND_EDGES)
+
+
+def detail(im: Image.Image) -> Image.Image:
+    """Enhance image detail/ texture."""
+    return _apply_pil_filter(im, ImageFilter.DETAIL)
+
+
+def smooth(im: Image.Image) -> Image.Image:
+    """Smooth the image slightly (reduce noise/grain)."""
+    return _apply_pil_filter(im, ImageFilter.SMOOTH)
 
 
 def desaturate(im: Image.Image) -> Image.Image:
@@ -390,6 +431,12 @@ PIPELINE_OPS = {
     "rotate": lambda im, **kw: rotate(im, float(kw.get("degrees", 90))),
     "blur": lambda im, **kw: blur(im, float(kw.get("radius", 2.0))),
     "sharpen": lambda im, **kw: sharpen(im, float(kw.get("percent", 150)), float(kw.get("radius", 2.0))),
+    "emboss": lambda im, **kw: emboss(im),
+    "contour": lambda im, **kw: contour(im),
+    "edge_enhance": lambda im, **kw: edge_enhance(im),
+    "find_edges": lambda im, **kw: find_edges(im),
+    "detail": lambda im, **kw: detail(im),
+    "smooth": lambda im, **kw: smooth(im),
     "desaturate": lambda im, **kw: desaturate(im),
     "invert": lambda im, **kw: invert(im),
     "brightness": lambda im, **kw: brightness(im, float(kw.get("factor", 1.2))),
