@@ -330,6 +330,73 @@ def pad(
     return canvas
 
 
+def select_rect(
+    im: Image.Image,
+    x: int,
+    y: int,
+    width: int,
+    height: int,
+) -> dict[str, Any]:
+    """
+    Store a rectangular selection region (does not modify pixels).
+    Returns the selection coordinates for downstream fill/stroke ops.
+    """
+    w = max(1, int(width))
+    h = max(1, int(height))
+    cx = max(0, int(x))
+    cy = max(0, int(y))
+    # Clamp to image bounds
+    cx = min(cx, im.width - 1)
+    cy = min(cy, im.height - 1)
+    if cx + w > im.width:
+        w = im.width - cx
+    if cy + h > im.height:
+        h = im.height - cy
+    return {
+        "x": cx,
+        "y": cy,
+        "width": w,
+        "height": h,
+        "image_width": im.width,
+        "image_height": im.height,
+    }
+
+
+def fill_selection(
+    im: Image.Image,
+    x: int,
+    y: int,
+    width: int,
+    height: int,
+    color: str = "#000000",
+) -> Image.Image:
+    """Fill the selected rectangular region with a solid color."""
+    return fill_rect(im, x, y, width, height, color=color)
+
+
+def stroke_selection(
+    im: Image.Image,
+    x: int,
+    y: int,
+    width: int,
+    height: int,
+    color: str = "#ffffff",
+    stroke_width: int = 2,
+) -> Image.Image:
+    """
+    Draw a stroked rectangle border around the selection area,
+    leaving the interior untouched.
+    """
+    out = im.copy()
+    if out.mode not in ("RGB", "RGBA"):
+        out = out.convert("RGBA")
+    draw = ImageDraw.Draw(out)
+    sw = max(1, int(stroke_width))
+    box = (int(x), int(y), int(x) + max(1, int(width)), int(y) + max(1, int(height)))
+    draw.rectangle(box, outline=color, width=sw)
+    return out
+
+
 def border(
     im: Image.Image, width: int = 4, color: str = "#ffffff"
 ) -> Image.Image:
@@ -435,6 +502,30 @@ PIPELINE_OPS = {
     ),
     "pad": lambda im, **kw: pad(
         im, int(kw.get("padding", 32)), str(kw.get("color", "#000000")), bool(kw.get("transparent", False))
+    ),
+    "select_rect": lambda im, **kw: select_rect(
+        im,
+        int(kw.get("x", 0)),
+        int(kw.get("y", 0)),
+        int(kw.get("width", im.width)),
+        int(kw.get("height", im.height)),
+    ),
+    "fill_selection": lambda im, **kw: fill_selection(
+        im,
+        int(kw.get("x", 0)),
+        int(kw.get("y", 0)),
+        int(kw.get("width", im.width)),
+        int(kw.get("height", im.height)),
+        str(kw.get("color", "#000000")),
+    ),
+    "stroke_selection": lambda im, **kw: stroke_selection(
+        im,
+        int(kw.get("x", 0)),
+        int(kw.get("y", 0)),
+        int(kw.get("width", im.width)),
+        int(kw.get("height", im.height)),
+        str(kw.get("color", "#ffffff")),
+        int(kw.get("stroke_width", 2)),
     ),
     "border": lambda im, **kw: border(im, int(kw.get("width", 4)), str(kw.get("color", "#ffffff"))),
     "opacity": lambda im, **kw: opacity(im, float(kw.get("factor", 1.0))),
