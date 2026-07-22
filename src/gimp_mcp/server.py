@@ -298,8 +298,39 @@ def gimp_flatten(image_id: str) -> str:
     return _j(get_backend().flatten(image_id))
 
 
+@mcp.tool()
+def gimp_select_rect(
+    image_id: str, x: int = 0, y: int = 0, width: int = 256, height: int = 256
+) -> str:
+    """
+    Create a rectangular selection on the image.
+    Subsequent fill_selection / stroke_selection will operate within this region.
+    Use gimp_info to check image dimensions before selecting.
+    """
+    return _j(get_backend().select_rect(image_id, x, y, width, height))
 
-﻿@mcp.tool()
+
+@mcp.tool()
+def gimp_fill_selection(image_id: str, color: str = "#000000") -> str:
+    """
+    Fill the active selection region with a solid color.
+    Requires an active selection created by gimp_select_rect.
+    """
+    return _j(get_backend().fill_selection(image_id, color))
+
+
+@mcp.tool()
+def gimp_stroke_selection(
+    image_id: str, color: str = "#ffffff", stroke_width: int = 2
+) -> str:
+    """
+    Stroke (draw border around) the active selection region.
+    Requires an active selection created by gimp_select_rect.
+    """
+    return _j(get_backend().stroke_selection(image_id, color, stroke_width))
+
+
+@mcp.tool()
 def gimp_histogram(image_id: str) -> str:
     """Get image histogram data (RGB channel distribution)."""
     return _j(get_backend().histogram(image_id))

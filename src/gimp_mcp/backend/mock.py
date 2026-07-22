@@ -40,6 +40,9 @@ OPS_LIST = [
     "border",
     "opacity",
     "export",
+    "select_rect",
+    "fill_selection",
+    "stroke_selection",
     "batch_resize",
     "pipeline",
     "close",
@@ -382,7 +385,63 @@ class MockBackend:
         except KeyError as e:
             return {"ok": False, "error": str(e)}
 
-﻿    def histogram(self, image_id: str) -> dict[str, Any]:
+    def select_rect(
+        self, image_id: str, x: int, y: int, width: int, height: int
+    ) -> dict[str, Any]:
+        """Create a rectangular selection (mock: stores selection coords)."""
+        try:
+            im = self._load(image_id)
+            sel = ops.select_rect(im, x, y, width, height)
+            # Store selection on the image metadata
+            meta = self._get(image_id)
+            meta["_selection"] = sel
+            self._images[image_id] = meta
+            return {"ok": True, "selection": sel, "image_id": image_id}
+        except KeyError as e:
+            return {"ok": False, "error": str(e)}
+
+    def fill_selection(self, image_id: str, color: str = "#000000") -> dict[str, Any]:
+        """Fill the active selection with a color."""
+        try:
+            meta = self._get(image_id)
+            sel = meta.get("_selection")
+            if not sel:
+                return {"ok": False, "error": "no active selection; call select_rect first"}
+            return self._apply(
+                image_id,
+                ops.fill_selection,
+                x=sel["x"],
+                y=sel["y"],
+                width=sel["width"],
+                height=sel["height"],
+                color=color,
+            )
+        except KeyError as e:
+            return {"ok": False, "error": str(e)}
+
+    def stroke_selection(
+        self, image_id: str, color: str = "#ffffff", stroke_width: int = 2
+    ) -> dict[str, Any]:
+        """Stroke (border) the active selection."""
+        try:
+            meta = self._get(image_id)
+            sel = meta.get("_selection")
+            if not sel:
+                return {"ok": False, "error": "no active selection; call select_rect first"}
+            return self._apply(
+                image_id,
+                ops.stroke_selection,
+                x=sel["x"],
+                y=sel["y"],
+                width=sel["width"],
+                height=sel["height"],
+                color=color,
+                stroke_width=stroke_width,
+            )
+        except KeyError as e:
+            return {"ok": False, "error": str(e)}
+
+    def histogram(self, image_id: str) -> dict[str, Any]:
         """Calculate RGB histogram data (mock)."""
         try:
             im = self._load(image_id)
