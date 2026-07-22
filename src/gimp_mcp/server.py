@@ -120,6 +120,42 @@ def gimp_sharpen(image_id: str, percent: float = 150.0, radius: float = 2.0) -> 
 
 
 @mcp.tool()
+def gimp_emboss(image_id: str) -> str:
+    """Apply emboss filter for a raised 3D effect."""
+    return _j(get_backend().emboss(image_id))
+
+
+@mcp.tool()
+def gimp_contour(image_id: str) -> str:
+    """Apply contour filter to highlight edges."""
+    return _j(get_backend().contour(image_id))
+
+
+@mcp.tool()
+def gimp_edge_enhance(image_id: str) -> str:
+    """Enhance edges in the image."""
+    return _j(get_backend().edge_enhance(image_id))
+
+
+@mcp.tool()
+def gimp_find_edges(image_id: str) -> str:
+    """Detect and highlight edges (edge-detect filter)."""
+    return _j(get_backend().find_edges(image_id))
+
+
+@mcp.tool()
+def gimp_detail(image_id: str) -> str:
+    """Enhance image detail / texture."""
+    return _j(get_backend().detail(image_id))
+
+
+@mcp.tool()
+def gimp_smooth(image_id: str) -> str:
+    """Smooth the image slightly (reduce noise/grain)."""
+    return _j(get_backend().smooth(image_id))
+
+
+@mcp.tool()
 def gimp_desaturate(image_id: str) -> str:
     """Convert to grayscale."""
     return _j(get_backend().desaturate(image_id))
@@ -259,7 +295,8 @@ def gimp_pipeline(image_id: str, steps_json: str) -> str:
     """
     Apply a multi-step recipe. steps_json is a JSON array of objects with 'op' plus params.
     Ops include: auto_orient, resize, thumbnail, crop, crop_bottom, crop_percent, flip,
-    rotate, blur, sharpen, desaturate, invert, brightness, contrast, saturation, text,
+    rotate, blur, sharpen, emboss, contour, edge_enhance, find_edges, detail, smooth,
+    desaturate, invert, brightness, contrast, saturation, text,
     erase_rect, fill_rect, remove_background, trim, pad, border, opacity.
     """
     steps = json.loads(steps_json)
@@ -299,7 +336,7 @@ def gimp_flatten(image_id: str) -> str:
 
 
 
-﻿@mcp.tool()
+@mcp.tool()
 def gimp_histogram(image_id: str) -> str:
     """Get image histogram data (RGB channel distribution)."""
     return _j(get_backend().histogram(image_id))

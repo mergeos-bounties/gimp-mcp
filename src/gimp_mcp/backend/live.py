@@ -240,7 +240,7 @@ class LiveBackend:
                 "returncode": proc.returncode,
                 "log_tail": out[-2000:],
             }
-﻿        except subprocess.TimeoutExpired:
+        except subprocess.TimeoutExpired:
             # Kill hung gimp-console process
             import psutil
             for proc in psutil.process_iter(["pid", "name"]):

@@ -24,6 +24,12 @@ OPS_LIST = [
     "rotate",
     "blur",
     "sharpen",
+    "emboss",
+    "contour",
+    "edge_enhance",
+    "find_edges",
+    "detail",
+    "smooth",
     "desaturate",
     "invert",
     "brightness",
@@ -193,6 +199,24 @@ class MockBackend:
 
     def sharpen(self, image_id: str, percent: float = 150.0, radius: float = 2.0) -> dict[str, Any]:
         return self._apply(image_id, ops.sharpen, percent=percent, radius=radius)
+
+    def emboss(self, image_id: str) -> dict[str, Any]:
+        return self._apply(image_id, ops.emboss)
+
+    def contour(self, image_id: str) -> dict[str, Any]:
+        return self._apply(image_id, ops.contour)
+
+    def edge_enhance(self, image_id: str) -> dict[str, Any]:
+        return self._apply(image_id, ops.edge_enhance)
+
+    def find_edges(self, image_id: str) -> dict[str, Any]:
+        return self._apply(image_id, ops.find_edges)
+
+    def detail(self, image_id: str) -> dict[str, Any]:
+        return self._apply(image_id, ops.detail)
+
+    def smooth(self, image_id: str) -> dict[str, Any]:
+        return self._apply(image_id, ops.smooth)
 
     def desaturate(self, image_id: str) -> dict[str, Any]:
         return self._apply(image_id, ops.desaturate)
@@ -382,7 +406,7 @@ class MockBackend:
         except KeyError as e:
             return {"ok": False, "error": str(e)}
 
-﻿    def histogram(self, image_id: str) -> dict[str, Any]:
+    def histogram(self, image_id: str) -> dict[str, Any]:
         """Calculate RGB histogram data (mock)."""
         try:
             im = self._load(image_id)
