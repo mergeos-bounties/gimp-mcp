@@ -330,7 +330,7 @@ def gimp_stroke_selection(
     return _j(get_backend().stroke_selection(image_id, color, stroke_width))
 
 
-﻿@mcp.tool()
+@mcp.tool()
 def gimp_histogram(image_id: str) -> str:
     """Get image histogram data (RGB channel distribution)."""
     return _j(get_backend().histogram(image_id))
