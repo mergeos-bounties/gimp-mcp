@@ -295,7 +295,8 @@ def gimp_pipeline(image_id: str, steps_json: str) -> str:
     """
     Apply a multi-step recipe. steps_json is a JSON array of objects with 'op' plus params.
     Ops include: auto_orient, resize, thumbnail, crop, crop_bottom, crop_percent, flip,
-    rotate, blur, sharpen, desaturate, invert, brightness, contrast, saturation, text,
+    rotate, blur, sharpen, emboss, contour, edge_enhance, find_edges, detail, smooth,
+    desaturate, invert, brightness, contrast, saturation, text,
     erase_rect, fill_rect, remove_background, trim, pad, border, opacity.
     """
     steps = json.loads(steps_json)
