@@ -406,7 +406,7 @@ class MockBackend:
         except KeyError as e:
             return {"ok": False, "error": str(e)}
 
-﻿    def histogram(self, image_id: str) -> dict[str, Any]:
+    def histogram(self, image_id: str) -> dict[str, Any]:
         """Calculate RGB histogram data (mock)."""
         try:
             im = self._load(image_id)
